@@ -326,6 +326,48 @@
       ],
       "id": "e33765e1-ad08-48e0-a35c-deb85b3fe910",
       "name": "Use Rule Fallback"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "3qIYPnQtadwkVUpM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/3qIYPnQtadwkVUpM",
+          "cachedResultName": "03_MASTER_AUTOMATION"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2992,
+        96
+      ],
+      "id": "72eec988-6bc1-49df-977e-254fc561781e",
+      "name": "Run Master Automation"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const decision = $json;\n\n// Dữ liệu sensor gốc trước khi gọi AI\nconst original = $('Prepare Decision Input').item.json;\n\nreturn {\n  json: {\n    decision_id: decision.id,\n\n    telemetry_id:\n      decision.sourceTelemetryId ??\n      original.telemetry_id ??\n      null,\n\n    device_id: original.device_id,\n    room: original.room,\n\n    fan_action: decision.fanAction,\n    light_action: decision.lightAction,\n\n    mode: decision.mode,\n    decision_source: decision.decisionSource,\n    reason: decision.reason,\n\n    model_name: decision.modelName ?? null,\n\n    timestamp:\n      decision.createdAt ??\n      original.timestamp\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        96
+      ],
+      "id": "c1287a84-c1ba-4d6f-910c-a663b5fb87c2",
+      "name": "Prepare Master Automation Payload"
     }
   ],
   "pinData": {},
@@ -511,6 +553,28 @@
           }
         ]
       ]
+    },
+    "Save Decision to Backend": {
+      "main": [
+        [
+          {
+            "node": "Prepare Master Automation Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Master Automation Payload": {
+      "main": [
+        [
+          {
+            "node": "Run Master Automation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -518,7 +582,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "52492372-ec42-4196-9731-4f8bf224298e",
+  "versionId": "ceb1e6fe-cb1c-4993-9834-185cf8183701",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "74397114e206792390d2318630c9cb2cd8c3ad6e9328254d2194767fe90a0e8d"

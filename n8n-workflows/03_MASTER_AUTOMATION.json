@@ -1,0 +1,136 @@
+{
+  "name": "03_MASTER_AUTOMATION",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f88950e0-fce0-4737-91c9-395ee4334552",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    decision_id: $json.decision_id ?? null,\n    telemetry_id: $json.telemetry_id ?? null,\n\n    device_id: $json.device_id ?? null,\n    room: $json.room ?? null,\n\n    fan_action: $json.fan_action ?? \"KEEP\",\n    light_action: $json.light_action ?? \"KEEP\",\n\n    mode: $json.mode ?? null,\n    decision_source: $json.decision_source ?? null,\n    reason: $json.reason ?? null,\n\n    timestamp: $json.timestamp ?? new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "74f27f49-c9e8-4bef-8cdd-80e6c5e6d700",
+      "name": "Prepare Automation Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst commands = [];\n\n// FAN command\nif (['ON', 'OFF'].includes(data.fan_action)) {\n  commands.push({\n    json: {\n      device_id: data.device_id,\n      decision_id: data.decision_id,\n      command_type: 'FAN',\n      action: data.fan_action,\n      source: 'AUTO',\n\n      telemetry_id: data.telemetry_id,\n      room: data.room,\n      mode: data.mode,\n      decision_source: data.decision_source,\n      reason: data.reason\n    }\n  });\n}\n\n// LIGHT command\nif (['ON', 'OFF'].includes(data.light_action)) {\n  commands.push({\n    json: {\n      device_id: data.device_id,\n      decision_id: data.decision_id,\n      command_type: 'LIGHT',\n      action: data.light_action,\n      source: 'AUTO',\n\n      telemetry_id: data.telemetry_id,\n      room: data.room,\n      mode: data.mode,\n      decision_source: data.decision_source,\n      reason: data.reason\n    }\n  });\n}\n\nreturn commands;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "90e3af29-8bf4-46f5-8180-01aceab0bea8",
+      "name": "Build Device Commands"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/commands",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"device_id\": \"{{$json.device_id}}\",\n  \"decision_id\": \"{{$json.decision_id}}\",\n  \"command_type\": \"{{$json.command_type}}\",\n  \"action\": \"{{$json.action}}\",\n  \"source\": \"{{$json.source}}\",\n  \"payload\": {\n    \"telemetry_id\": \"{{$json.telemetry_id}}\",\n    \"room\": \"{{$json.room}}\",\n    \"mode\": \"{{$json.mode}}\",\n    \"decision_source\": \"{{$json.decision_source}}\",\n    \"reason\": \"{{$json.reason}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "5c440a18-38c7-49f0-af13-853aae0ac2eb",
+      "name": "Create Command in Backend"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    command_id: $json.id,\n    device_id: $json.deviceId,\n    decision_id: $json.decisionId,\n\n    command_type: $json.commandType,\n    action: $json.action,\n\n    source: $json.source,\n    status: $json.status,\n\n    payload: $json.payload,\n\n    requested_at: $json.requestedAt\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "3b0dbebb-2c79-4fc9-bcd0-c8f9e0c4359d",
+      "name": "Prepare Dispatch Payload"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Automation Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Automation Input": {
+      "main": [
+        [
+          {
+            "node": "Build Device Commands",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Device Commands": {
+      "main": [
+        [
+          {
+            "node": "Create Command in Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Command in Backend": {
+      "main": [
+        [
+          {
+            "node": "Prepare Dispatch Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "45bc3f5b-478d-46ff-9d6a-b3091e4a26f9",
+  "meta": {
+    "instanceId": "74397114e206792390d2318630c9cb2cd8c3ad6e9328254d2194767fe90a0e8d"
+  },
+  "nodeGroups": [],
+  "id": "3qIYPnQtadwkVUpM",
+  "tags": []
+}
