@@ -1,0 +1,586 @@
+{
+  "name": "WF07_ENV_ALERT_BACKEND_DUONG",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "return [{json: {...{\"room\": \"A101\", \"device_id\": \"ESP32_A101\", \"temperature\": 27, \"humidity\": 50, \"occupancy\": true, \"light_raw\": 500, \"light_percent\": 88}, timestamp: new Date().toISOString()}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        160
+      ],
+      "id": "9528ee2b-4676-4286-8f17-b0848f0a0ecd",
+      "name": "Du lieu mau"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        160
+      ],
+      "id": "1c8b56d4-993d-4a87-88ed-43a05b902342",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const data = item.json;\n  const config = data.config;\n\n  const temperature = data.temperature;\n  const humidity = data.humidity;\n\n  // Chặn dữ liệu thiếu hoặc không hợp lệ trước khi xét cảnh báo.\n  if (\n    !data.room_id ||\n    !Number.isFinite(temperature) ||\n    temperature < -40 || temperature > 80 ||\n    !Number.isFinite(humidity) ||\n    humidity < 0 ||\n    humidity > 100\n  ) {\n    return {\n      json: {\n        ...data,\n        severity: \"INVALID\",\n        alert_type: \"INVALID_TELEMETRY\",\n        message: \"Dữ liệu cảm biến không hợp lệ\",\n        request_buzzer: false\n      }\n    };\n  }\n\n  let tempLevel = 0;\n  if (temperature >= config.temperature_critical) {\n    tempLevel = 2;\n  } else if (temperature >= config.temperature_warning) {\n    tempLevel = 1;\n  }\n\n  let humidityLevel = 0;\n  if (\n    humidity <= config.humidity_low_critical ||\n    humidity >= config.humidity_high_critical\n  ) {\n    humidityLevel = 2;\n  } else if (\n    humidity <= config.humidity_low_warning ||\n    humidity >= config.humidity_high_warning\n  ) {\n    humidityLevel = 1;\n  }\n\n  // Nếu cả hai chỉ số cùng bất thường, lấy mức nặng hơn.\n  const level = Math.max(tempLevel, humidityLevel);\n  const severity = [\"NORMAL\", \"WARNING\", \"CRITICAL\"][level];\n\n  let alertType = \"NONE\";\n  if (tempLevel > 0 && humidityLevel > 0) {\n    alertType = \"TEMPERATURE_AND_HUMIDITY\";\n  } else if (tempLevel > 0) {\n    alertType = \"TEMPERATURE\";\n  } else if (humidityLevel > 0) {\n    alertType = \"HUMIDITY\";\n  }\n\n  return {\n    json: {\n      ...data,\n      severity,\n      alert_type: alertType,\n      message: `Phòng ${data.room_id}: ${temperature}°C, độ ẩm ${humidity}% - ${severity}`,\n      request_buzzer: severity === \"CRITICAL\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        160
+      ],
+      "id": "914d8b6f-9632-4806-a8a0-98b2d3bc29ab",
+      "name": "Phan loai canh bao"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "NORMAL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "35337df6-056c-4d72-a728-0b1dbdd99a73"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NORMAL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "de53c660-1469-4cc3-93ab-5485841291ab",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "WARNING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WARNING"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "88171aae-df85-4eed-bf7b-520f95d1347a",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "CRITICAL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CRITICAL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0d6b1340-6e0a-4304-89fa-47cf6277735a",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "INVALID",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "INVALID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        80
+      ],
+      "id": "ff99aed2-b04f-4d4c-b831-9f62d018b42d",
+      "name": "Tach muc canh bao"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const data = item.json;\n  const critical = data.severity === \"CRITICAL\";\n  const leftCritical =\n    data.previous_severity === \"CRITICAL\" && !critical;\n\n  return {\n    json: {\n      room: data.room_id,\n      room_id: data.room_id,\n      device_id: data.device_id,\n      timestamp: data.timestamp,\n      severity: data.severity,\n      alert_type: data.alert_type,\n      previous_severity: data.previous_severity,\n      message: data.message,\n\n      wf07_status: \"ALERT\",\n      should_notify: true,\n      email_request: {\n        subject: `[${data.severity}] Phòng ${data.room_id} - Cảnh báo môi trường`,\n        body:\n          `Phòng: ${data.room_id}\\n` +\n          `Thời gian: ${data.timestamp}\\n` +\n          `Nhiệt độ: ${data.temperature}°C\\n` +\n          `Độ ẩm: ${data.humidity}%\\n` +\n          `Mức: ${data.severity}\\n` +\n          `Nội dung: ${data.message}`\n      },\n\n      incident_request: critical\n        ? {\n            type: \"ENVIRONMENT\",\n            severity: \"CRITICAL\",\n            room_id: data.room_id,\n            source: \"WF07_ENV_ALERT\",\n            message: data.message\n          }\n        : null,\n\n      device_request: critical\n        ? {\n            buzzer: \"ON\",\n            reason: \"ENVIRONMENT_CRITICAL\"\n          }\n        : null,\n\n      // Báo rằng nguyên nhân môi trường không còn cần giữ còi.\n      environment_buzzer_release: leftCritical,\n\n      incident_resolution_request: leftCritical\n        ? {\n            type: \"ENVIRONMENT\",\n            room_id: data.room_id,\n            source: \"WF07_ENV_ALERT\",\n            reason: \"ENVIRONMENT_BELOW_CRITICAL\"\n          }\n        : null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        200
+      ],
+      "id": "ab8acbd7-2e2d-4f8e-a513-f1e11c06b978",
+      "name": "Tao yeu cau canh bao"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dữ liệu cảm biến mới, lấy từ node phân loại.\nconst current = $('Phan loai canh bao').first().json;\n\n// Dòng trạng thái cũ trong Data Table.\n// Khi chưa có dòng nào, Always Output Data có thể cho ra {}.\nconst saved = $input.first()?.json ?? {};\nconst hasSavedState = saved.room_id === current.room_id;\n\nlet shouldNotify = false;\nlet shouldUpdateState = false;\nlet reason = \"\";\n\nif (current.severity === \"INVALID\") {\n  reason = \"Dữ liệu lỗi, không dùng để thay đổi trạng thái cảnh báo\";\n} else if (current.severity === \"NORMAL\") {\n  shouldUpdateState =\n    !hasSavedState || saved.severity !== \"NORMAL\";\n  reason = \"Phòng bình thường; đặt lại trạng thái cảnh báo\";\n} else {\n  const isNewAlert =\n    !hasSavedState ||\n    saved.severity !== current.severity ||\n    saved.alert_type !== current.alert_type;\n\n  shouldNotify = isNewAlert;\n  shouldUpdateState = isNewAlert;\n  reason = isNewAlert\n    ? \"Mức hoặc loại cảnh báo đã thay đổi\"\n    : \"Cảnh báo này đã được ghi nhận, bỏ qua bản tin lặp\";\n}\n\nreturn [{\n  json: {\n    ...current,\n    previous_severity: hasSavedState ? saved.severity : null,\n    previous_alert_type: hasSavedState ? saved.alert_type : null,\n    should_notify: shouldNotify,\n    should_update_state: shouldUpdateState,\n    dedupe_reason: reason,\n    state_to_save: {\n      room_id: current.room_id,\n      severity: current.severity,\n      alert_type: current.alert_type,\n      last_notified_at: shouldNotify\n        ? new Date().toISOString()\n        : (saved.last_notified_at ?? \"\")\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        160
+      ],
+      "id": "3da7591b-3512-4c37-903c-181c71ccd45f",
+      "name": "Quyet dinh canh bao moi"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/environment/state/' + encodeURIComponent($json.room_id) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        160
+      ],
+      "id": "f8dd5f03-ac3e-4172-a5f6-ec5d528cd506",
+      "name": "Doc trang thai Backend"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c39696cf-7a03-48b4-a7d8-caad2a055f49",
+              "leftValue": "={{ $json.should_update_state }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1920,
+        160
+      ],
+      "id": "e4a6b83c-ee2c-4630-a468-2bd475eaed4a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: $('Quyet dinh canh bao moi').first().json\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        80
+      ],
+      "id": "66d36e7d-36d8-46e4-bf4d-0b025a452064",
+      "name": "Lay lai du lieu canh bao"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const data = item.json;\n  const leftCritical = data.previous_severity === \"CRITICAL\";\n\n  return {\n    json: {\n      room: data.room_id,\n      room_id: data.room_id,\n      device_id: data.device_id,\n      timestamp: data.timestamp,\n      event: data.previous_severity ? \"ENVIRONMENT_RECOVERED\" : \"ENVIRONMENT_INITIALIZED\",\n      wf07_status: data.previous_severity ? \"RECOVERED\" : \"INITIALIZED\",\n      should_notify: false,\n      severity: \"NORMAL\",\n      previous_severity: data.previous_severity,\n      message: `Phòng ${data.room_id}: nhiệt độ và độ ẩm ở mức bình thường`,\n\n      // Chỉ cần giải phóng còi và đóng incident nếu trước đó là CRITICAL.\n      environment_buzzer_release: leftCritical,\n      incident_resolution_request: leftCritical\n        ? {\n            type: \"ENVIRONMENT\",\n            room_id: data.room_id,\n            source: \"WF07_ENV_ALERT\",\n            reason: \"ENVIRONMENT_RECOVERED\"\n          }\n        : null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        -80
+      ],
+      "id": "b8f42734-9d93-4dce-a267-342cd3939f09",
+      "name": "Tao yeu cau phuc hoi"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.backend_base_url + '/environment/config/' + encodeURIComponent($json.room_id) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        160
+      ],
+      "id": "b9f1cd43-76d4-47d5-b7cd-d187c1e5cbd8",
+      "name": "Doc Config Backend"
+    },
+    {
+      "parameters": {
+        "jsCode": "// WF07 accepts ONE sensor record per execution.\nconst items = $input.all();\nif (items.length !== 1) throw new Error('WF07 requires exactly one telemetry item per execution');\nconst data = items[0].json;\nconst room = data.room ?? data.room_id;\nif (typeof room !== 'string' || !room.trim()) throw new Error('Telemetry missing room');\nif (typeof data.device_id !== 'string' || !data.device_id.trim()) throw new Error('Telemetry missing device_id');\nreturn [{json: {...data, room: room.trim(), room_id: room.trim(),\n timestamp: data.timestamp ?? new Date().toISOString(),\n backend_base_url: 'http://host.docker.internal:3001/api'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        160
+      ],
+      "id": "cf9adf0f-3f3e-4639-93dc-702ddde2cb2f",
+      "name": "Telemetry dau vao"
+    },
+    {
+      "parameters": {
+        "jsCode": "const telemetry = $('Telemetry dau vao').first().json;\nconst row = $input.first()?.json ?? {};\n\nif (row.room_id !== telemetry.room_id) {\n  throw new Error(\n    `Không tìm thấy Config cho phòng ${telemetry.room_id}`\n  );\n}\n\nconst fields = [\n  \"temperature_warning\",\n  \"temperature_critical\",\n  \"humidity_low_warning\",\n  \"humidity_low_critical\",\n  \"humidity_high_warning\",\n  \"humidity_high_critical\"\n];\n\nconst config = {};\n\nfor (const field of fields) {\n  const raw = row[field];\n\n  if (\n    raw === undefined ||\n    raw === null ||\n    String(raw).trim() === \"\"\n  ) {\n    throw new Error(`Config thiếu cột hoặc giá trị: ${field}`);\n  }\n\n  const value = Number(raw);\n  if (!Number.isFinite(value)) {\n    throw new Error(`Config ${field} không phải số: ${raw}`);\n  }\n\n  config[field] = value;\n}\n\nif (\n  config.temperature_warning >= config.temperature_critical ||\n  config.humidity_low_critical >= config.humidity_low_warning ||\n  config.humidity_low_warning >= config.humidity_high_warning ||\n  config.humidity_high_warning >= config.humidity_high_critical\n) {\n  throw new Error(\"Thứ tự các ngưỡng trong Config không hợp lệ\");\n}\n\nreturn [{\n  json: {\n    ...telemetry,\n    config\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        160
+      ],
+      "id": "b662d5f8-eaa9-4de5-b1fc-58b51fd8955d",
+      "name": "Ghep telemetry va Config"
+    },
+    {
+      "parameters": {
+        "sendTo": "",
+        "subject": "={{ $json.email_request.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.email_request.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2920,
+        200
+      ],
+      "id": "73641773-d636-4f50-b09c-2b160fd48dee",
+      "name": "Gui Gmail canh bao WF07",
+      "webhookId": "d963b494-dc9f-416f-b5f4-b289552edcd1"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/environment/state/' + encodeURIComponent($('Quyet dinh canh bao moi').first().json.room_id) }}",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { severity: $('Quyet dinh canh bao moi').first().json.state_to_save.severity, alert_type: $('Quyet dinh canh bao moi').first().json.state_to_save.alert_type, last_notified_at: $('Quyet dinh canh bao moi').first().json.state_to_save.last_notified_at || null } }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3160,
+        40
+      ],
+      "id": "30737044-1746-44b5-a265-c8003ce77918",
+      "name": "Luu trang thai Backend"
+    },
+    {
+      "parameters": {
+        "jsCode": "const severity = $('Phan loai canh bao').first().json.severity;\n\nconst result = severity === 'NORMAL'\n  ? $('Tao yeu cau phuc hoi').first().json\n  : $('Tao yeu cau canh bao').first().json;\n\nreturn [{ json: result }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3400,
+        40
+      ],
+      "id": "05126b64-18cb-47c5-b497-ca2288483023",
+      "name": "Dau ra WF07"
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"room\": \"A101\",\n  \"device_id\": \"ESP32_A101\",\n  \"temperature\": 27,\n  \"humidity\": 50,\n  \"occupancy\": true,\n  \"light_raw\": 500,\n  \"light_percent\": 88,\n  \"timestamp\": \"2026-10-14T16:00:00Z\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        -80
+      ],
+      "id": "97fee5f4-6a0c-47c4-be1e-28aeea1172c9",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Quyet dinh canh bao moi').first().json;\nreturn [{json: {\n room: d.room_id, room_id: d.room_id, device_id: d.device_id,\n timestamp: d.timestamp, severity: d.severity, alert_type: d.alert_type,\n wf07_status: d.severity === 'INVALID' ? 'INVALID' : 'NO_CHANGE',\n should_notify: false, message: d.message,\n incident_request: null, device_request: null,\n environment_buzzer_release: false, incident_resolution_request: null\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        440
+      ],
+      "id": "3f51ffc5-d029-4a33-a43a-86c8d948a149",
+      "name": "WF07 Khong co thay doi"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Du lieu mau",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du lieu mau": {
+      "main": [
+        [
+          {
+            "node": "Telemetry dau vao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phan loai canh bao": {
+      "main": [
+        [
+          {
+            "node": "Doc trang thai Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tach muc canh bao": {
+      "main": [
+        [
+          {
+            "node": "Tao yeu cau phuc hoi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tao yeu cau canh bao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tao yeu cau canh bao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quyet dinh canh bao moi": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Lay lai du lieu canh bao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WF07 Khong co thay doi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lay lai du lieu canh bao": {
+      "main": [
+        [
+          {
+            "node": "Tach muc canh bao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telemetry dau vao": {
+      "main": [
+        [
+          {
+            "node": "Doc Config Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghep telemetry va Config": {
+      "main": [
+        [
+          {
+            "node": "Phan loai canh bao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tao yeu cau canh bao": {
+      "main": [
+        [
+          {
+            "node": "Gui Gmail canh bao WF07",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gui Gmail canh bao WF07": {
+      "main": [
+        [
+          {
+            "node": "Luu trang thai Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Telemetry dau vao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tao yeu cau phuc hoi": {
+      "main": [
+        [
+          {
+            "node": "Luu trang thai Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc Config Backend": {
+      "main": [
+        [
+          {
+            "node": "Ghep telemetry va Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc trang thai Backend": {
+      "main": [
+        [
+          {
+            "node": "Quyet dinh canh bao moi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Luu trang thai Backend": {
+      "main": [
+        [
+          {
+            "node": "Dau ra WF07",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -18,6 +18,8 @@ import { DeviceCommand } from './entities/device-command.entity';
 import { DeviceEvent } from './entities/device-event.entity';
 import { Incident } from './entities/incident.entity';
 import { Report } from './entities/report.entity';
+import { EnvironmentModule } from './modules/environment/environment.module';
+import { MonitoringModule } from './modules/monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { Report } from './entities/report.entity';
     CommandsModule,
     IncidentsModule,
     DashboardModule,
+    EnvironmentModule,
+    MonitoringModule,
   ],
 })
 export class AppModule {}
