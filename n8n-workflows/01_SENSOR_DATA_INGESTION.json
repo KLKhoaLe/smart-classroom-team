@@ -1,0 +1,811 @@
+{
+  "name": "01_SENSOR_DATA_INGESTION",
+  "nodes": [
+    {
+      "parameters": {
+        "topics": "smartclassroom/teamkhoa/A101/telemetry",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d0acce9d-7495-409a-a22c-609b3628a068",
+      "name": "MQTT Trigger",
+      "credentials": {
+        "mqtt": {
+          "id": "5nibLptclwxEwULA",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = JSON.parse($json.message);\n\nreturn {\n  json: {\n    device_id: data.device_id,\n    room: data.room,\n    temperature: data.temperature,\n    humidity: data.humidity,\n    occupancy: data.occupancy,\n    light_raw: data.light_raw,\n    topic: $json.topic\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "47b0fc2d-1d99-4f1e-a363-78b99a0d3f29",
+      "name": "Parse Sensor JSON"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0c18f62a-4729-4858-b24c-e3df84365b62",
+              "leftValue": "={{ $json.device_id }}",
+              "rightValue": "ESP32_A101",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "64763857-7f25-48ba-97d0-b6f1a250ee66",
+      "name": "Validate Device ID"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c49590fd-94fb-48d8-8879-55eae11d4c37",
+              "leftValue": "={{ $json.temperature }}",
+              "rightValue": -40,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "0c2e3ac3-5832-42bb-811c-d430ee1e7e0e",
+              "leftValue": "={{ $json.temperature }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "6c08fa5f-bc96-40b1-8d3f-702187f9ce84",
+      "name": "Validate Temperature"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "27bbb2fb-8f8c-4690-b6d5-33c4bdf2397b",
+              "leftValue": "={{ $json.humidity }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "8b1f5138-0131-48f0-b1c2-0eb5a7249de7",
+              "leftValue": "={{ $json.humidity }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        -192
+      ],
+      "id": "c25e11a4-a59d-4807-aa14-e51fb6326a98",
+      "name": "Validate Humidity"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fcdf6a22-8ec3-4089-86b3-afc7564df9d2",
+              "leftValue": "={{ typeof $json.occupancy === 'boolean' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        -208
+      ],
+      "id": "ada66a18-f523-4095-9a8c-115dfaf2d4f0",
+      "name": "Validate Occupancy"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "77970bfd-e4a2-474b-8580-894584498577",
+              "leftValue": "={{ $json.light_raw }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "fa6a8c18-0608-407f-8d2d-2b9220ab539b",
+              "leftValue": "={{ $json.light_raw }}",
+              "rightValue": 4095,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        -256
+      ],
+      "id": "f3cb5b36-23d3-448d-bf50-5e488669609d",
+      "name": "Validate Light"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3bd4867e-0301-4239-bfa6-a1d400da5883",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1568,
+        -320
+      ],
+      "id": "24abdaa3-18a6-4982-b236-acbce2d94492",
+      "name": "Add Timestamp"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "01bb43b4-1ebe-4f41-b0b3-bc46ad5ef17e",
+              "name": "light_percent",
+              "value": "={{ Math.round(((4095 - $json.light_raw) / 4095) * 100) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1792,
+        -256
+      ],
+      "id": "7aa00222-0fc9-46c2-8650-93c142ebdf16",
+      "name": "Normalize Sensor Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dc1293ce-3258-4d96-951a-4ce1c37855e3",
+              "name": "data_status",
+              "value": "VALID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2016,
+        -256
+      ],
+      "id": "5ef423fc-a487-4a26-9dfc-43b60a81cae6",
+      "name": "Mark Valid Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2a1f70c4-14cf-4f9a-a7d3-1f3c30dc59f5",
+              "name": "data_status",
+              "value": "INVALID",
+              "type": "string"
+            },
+            {
+              "id": "aeee7eed-3363-4505-baa5-86ffb5f6292e",
+              "name": "error_reason",
+              "value": "INVALID_DEVICE_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        672,
+        96
+      ],
+      "id": "e56fc873-0283-40f0-9a6a-ccc004fb8fe8",
+      "name": "Invalid Device ID"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "acbb33b2-cee3-4e53-a429-f08a9ae65157",
+              "name": "data_status",
+              "value": "INVALID",
+              "type": "string"
+            },
+            {
+              "id": "73801965-2123-4b51-89d7-587bbfcfc34a",
+              "name": "error_reason",
+              "value": "INVALID_TEMPERATURE",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "782f922d-eaaf-4759-ae20-f227eb777387",
+      "name": "Invalid Temperature"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "35f245c6-f4c6-4102-bb78-14446aeac7b0",
+              "name": "data_status",
+              "value": "INVALID",
+              "type": "string"
+            },
+            {
+              "id": "8490a76c-07c8-4d22-ba0a-8a0d1af5ce2d",
+              "name": "error_reason",
+              "value": "INVALID_HUMIDITY",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1152,
+        -16
+      ],
+      "id": "702aef5f-da0c-4606-8f6e-d38353d9ecbf",
+      "name": "Invalid Humidity"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "786af64f-52f5-4251-a068-774158551019",
+              "name": "data_status",
+              "value": "INVALID",
+              "type": "string"
+            },
+            {
+              "id": "4bde43dd-3e90-490c-970b-8f521a72fed1",
+              "name": "error_reason",
+              "value": "INVALID_OCCUPANCY",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1408,
+        -48
+      ],
+      "id": "4ca3a12f-d218-4009-b141-a2ad1e114402",
+      "name": "Invalid Occupancy"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "881115c6-44a1-40a7-8ade-12789b1c8944",
+              "name": "data_status",
+              "value": "INVALID",
+              "type": "string"
+            },
+            {
+              "id": "897b7150-8bf4-408f-aefe-56aa7b005e1e",
+              "name": "error_reason",
+              "value": "INVALID_LIGHT",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1568,
+        -160
+      ],
+      "id": "a59c1455-8198-4131-ac90-34caa1433068",
+      "name": "Invalid Light"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4150bced-587d-4fa3-8182-b3462a73b657",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1648,
+        160
+      ],
+      "id": "f1f1baa2-e8ac-4452-99a2-3232aab3ffc9",
+      "name": "Add Error Timestamp"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/telemetry",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"device_id\": \"{{$json.device_id}}\",\n  \"room\": \"{{$json.room}}\",\n  \"temperature\": {{$json.temperature}},\n  \"humidity\": {{$json.humidity}},\n  \"occupancy\": {{$json.occupancy}},\n  \"light_raw\": {{$json.light_raw}},\n  \"light_percent\": {{$json.light_percent}},\n  \"timestamp\": \"{{$json.timestamp}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2288,
+        -224
+      ],
+      "id": "3b87bf3a-d96b-404e-a119-5eee85b5ba53",
+      "name": "Save Telemetry to Backend"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/ingestion-errors",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"device_id\": \"{{$json.device_id}}\",\n  \"room\": \"{{$json.room}}\",\n  \"temperature\": {{$json.temperature ?? null}},\n  \"humidity\": {{$json.humidity ?? null}},\n  \"occupancy\": {{$json.occupancy ?? null}},\n  \"light_raw\": {{$json.light_raw ?? null}},\n  \"error_reason\": \"{{$json.error_reason}}\",\n  \"timestamp\": \"{{$json.timestamp}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1872,
+        160
+      ],
+      "id": "a093fcd1-da1a-4f7d-984a-99b8d4b1803c",
+      "name": "Save Error to Backend"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "HAy1tQQMW0QQrGr1",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/HAy1tQQMW0QQrGr1",
+          "cachedResultName": "02_AI_DECISION_ENGINE"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2768,
+        -80
+      ],
+      "id": "1c4bf3fe-4d15-4262-9c89-2b5ec09c1417",
+      "name": "Run Decision Engine"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    telemetry_id: $json.id,\n\n    device_id: $json.rawPayload?.device_id ?? null,\n    room: $json.rawPayload?.room ?? null,\n\n    temperature: Number($json.temperature),\n    humidity: Number($json.humidity),\n    occupancy: $json.occupancy === true,\n\n    light_raw: Number($json.lightRaw),\n    light_percent: Number($json.lightPercent),\n\n    timestamp: $json.sourceTimestamp ?? $json.receivedAt,\n\n    data_status: \"VALID\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        -224
+      ],
+      "id": "591e1910-a993-4f32-bf15-08f5a69c6676",
+      "name": "Prepare Decision Payload"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MQTT Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Sensor JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Sensor JSON": {
+      "main": [
+        [
+          {
+            "node": "Validate Device ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Device ID": {
+      "main": [
+        [
+          {
+            "node": "Validate Temperature",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Device ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Temperature": {
+      "main": [
+        [
+          {
+            "node": "Validate Humidity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Temperature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Humidity": {
+      "main": [
+        [
+          {
+            "node": "Validate Occupancy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Humidity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Occupancy": {
+      "main": [
+        [
+          {
+            "node": "Validate Light",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Occupancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Light": {
+      "main": [
+        [
+          {
+            "node": "Add Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Light",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Normalize Sensor Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Sensor Data": {
+      "main": [
+        [
+          {
+            "node": "Mark Valid Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Light": {
+      "main": [
+        [
+          {
+            "node": "Add Error Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Occupancy": {
+      "main": [
+        [
+          {
+            "node": "Add Error Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Humidity": {
+      "main": [
+        [
+          {
+            "node": "Add Error Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Temperature": {
+      "main": [
+        [
+          {
+            "node": "Add Error Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Device ID": {
+      "main": [
+        [
+          {
+            "node": "Add Error Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Valid Data": {
+      "main": [
+        [
+          {
+            "node": "Save Telemetry to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Error Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Save Error to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Decision Engine": {
+      "main": [
+        []
+      ]
+    },
+    "Save Telemetry to Backend": {
+      "main": [
+        [
+          {
+            "node": "Prepare Decision Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Decision Payload": {
+      "main": [
+        [
+          {
+            "node": "Run Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "78e25fa1-25a1-4e0a-b3b4-f96bb226d1ea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "74397114e206792390d2318630c9cb2cd8c3ad6e9328254d2194767fe90a0e8d"
+  },
+  "nodeGroups": [],
+  "id": "3a4EZWc3xjoo3Yin",
+  "tags": []
+}
