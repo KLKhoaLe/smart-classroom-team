@@ -1,0 +1,55 @@
+.incidentWorkspace{display:grid;grid-template-columns:minmax(260px,.78fr) minmax(0,1.22fr);gap:16px;align-items:start;margin-top:16px}
+.incidentWorkspace>.panel{margin-top:0;min-width:0}
+.sectionHeading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
+.sectionHeading h2{margin:0}
+.sectionHeading .eyebrow{margin:0 0 7px}
+.formMark{display:grid;place-items:center;width:38px;height:38px;border:1px solid #365146;color:#86efac;background:#11251d;font-size:24px;border-radius:9px}
+.reportForm{display:grid;gap:14px}
+.reportForm .sectionHeading{margin-bottom:4px}
+.reportForm label{display:grid;gap:7px;color:#cbd5e1;font-size:13px;font-weight:700}
+.reportForm select,.reportForm textarea{width:100%;border:1px solid #334155;border-radius:8px;background:#0b1220;color:#eef2ff;padding:11px 12px;font:inherit;font-weight:400;outline:none}
+.reportForm select:focus,.reportForm textarea:focus{border-color:#38bdf8;box-shadow:0 0 0 3px #38bdf81a}
+.reportForm textarea{resize:vertical;min-height:112px}
+.reportForm textarea::placeholder{color:#64748b}
+.reportForm button{margin-top:2px;background:#15803d}
+.reportForm button:hover{background:#166534}
+.incidentCount{color:#cbd5e1;border:1px solid #334155;background:#0b1220;padding:7px 10px;border-radius:7px;font-size:12px;white-space:nowrap}
+.incidentList{max-height:520px;overflow:auto;padding-right:3px}
+.incident{gap:10px;border:1px solid #263247;border-left:3px solid #f59e0b;border-radius:5px;background:#0d1525;padding:14px}
+.incidentTop,.incidentTags{display:flex;align-items:center;gap:8px}
+.incidentTop{justify-content:space-between}
+.severity,.status,.incidentType{font-size:11px;font-weight:700;letter-spacing:.04em}
+.severity,.status{border-radius:4px;padding:4px 7px}
+.severity-info{background:#0c2a3b;color:#7dd3fc}
+.severity-warning{background:#34250b;color:#fcd34d}
+.severity-high{background:#3b1d12;color:#fdba74}
+.severity-critical{background:#3a151b;color:#fda4af}
+.status-open{background:#3b1d12;color:#fdba74}
+.status-resolved{background:#123022;color:#86efac}
+.incidentType{color:#cbd5e1}
+.incident p{margin:0;color:#e2e8f0;line-height:1.5;overflow-wrap:anywhere}
+.incident time{font-size:12px;color:#94a3b8}
+.emptyState{display:grid;justify-items:center;text-align:center;padding:42px 16px;color:#94a3b8}
+.emptyState span{font-size:28px;color:#38bdf8}
+.emptyState p{margin:8px 0 4px;color:#e2e8f0}
+.emptyState small{color:#64748b}
+.incidentPanel .error{overflow-wrap:anywhere}
+.reportsGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.reportsGrid>.panel{margin-top:0;min-width:0}
+.reportDate,.sourceTag{padding:7px 9px;border:1px solid #334155;border-radius:6px;color:#cbd5e1;background:#0b1220;font-size:11px;white-space:nowrap}
+.sourceAi{border-color:#365146;color:#86efac;background:#11251d}
+.dailyMetrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dailyMetrics>div{display:grid;gap:8px;padding:13px;border:1px solid #263247;border-radius:5px;background:#0d1525}
+.dailyMetrics span,.weeklyStats{color:#94a3b8;font-size:12px}
+.dailyMetrics strong{font-size:24px;color:#eef2ff}
+.severitySummary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px}
+.severity-low{background:#123022;color:#86efac}
+.severity-medium{background:#34250b;color:#fcd34d}
+.recommendation{margin:0;padding:16px;border-left:3px solid #38bdf8;background:#0d1525;color:#e2e8f0;line-height:1.6;overflow-wrap:anywhere}
+.weeklyStats{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px}
+.weeklyBreakdown{display:grid;gap:8px;margin-top:16px}
+.weeklyBreakdown>div{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #263247;color:#cbd5e1;font-size:13px}
+.weeklyBreakdown strong{color:#eef2ff}
+@media(max-width:800px){.incidentWorkspace{grid-template-columns:1fr}.incidentList{max-height:none}}
+@media(max-width:800px){.reportsGrid{grid-template-columns:1fr}}
+@media(max-width:500px){.incidentWorkspace>.panel,.reportsGrid>.panel{padding:18px}.incidentTop{align-items:flex-start}.sectionHeading{align-items:flex-start}.dailyMetrics>div{padding:10px}}

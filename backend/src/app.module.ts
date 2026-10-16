@@ -9,6 +9,7 @@ import { DecisionsModule } from './modules/decisions/decisions.module';
 import { CommandsModule } from './modules/commands/commands.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { Room } from './entities/room.entity';
 import { Device } from './entities/device.entity';
 import { Telemetry } from './entities/telemetry.entity';
@@ -40,6 +41,7 @@ import { Report } from './entities/report.entity';
     CommandsModule,
     IncidentsModule,
     DashboardModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}
