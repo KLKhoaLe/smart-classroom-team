@@ -1,0 +1,406 @@
+{
+  "name": "03_MASTER_AUTOMATION_V2",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        512,
+        656
+      ],
+      "id": "a9cd48ee-59e4-4081-ba69-d0f25befbca7",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$json;\nfor (const key of ['decision_id','device_id','room']) if(typeof d[key]!=='string'||!d[key].trim()) throw new Error('Missing '+key);\nfor (const key of ['fan_action','light_action']) if(!['ON','OFF','KEEP'].includes(d[key])) throw new Error('Invalid '+key);\nreturn {json:{...d,manual_hold_seconds:300,cooldown_seconds:20,pending_timeout_seconds:120,dispatch_enabled:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        656
+      ],
+      "id": "59a93237-08cc-4a76-965c-2ffd46c8cbaf",
+      "name": "Prepare Automation Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nreturn d.actions.map(a=>({json:{device_id:d.device_id,decision_id:d.decision_id,...a,source:'AUTO',telemetry_id:d.telemetry_id,room:d.room,mode:d.mode,decision_source:d.decision_source,reason:d.reason,dispatch_enabled:d.dispatch_enabled},pairedItem:{item:0}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        656
+      ],
+      "id": "d16f9bf2-ebb5-4064-98ed-eb1f393314a6",
+      "name": "Build Device Commands"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/commands",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({device_id:$json.device_id,decision_id:$json.decision_id,command_type:$json.command_type,action:$json.action,source:$json.source,payload:{device_code:$json.device_id,telemetry_id:$json.telemetry_id,room:$json.room,mode:$json.mode,decision_source:$json.decision_source,reason:$json.reason}}) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2512,
+        656
+      ],
+      "id": "0df26006-1742-4e47-bcc7-e7bf7805d64f",
+      "name": "Create Command in Backend"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$json;\nreturn {json:{command_id:d.id,device_id:d.payload.device_code,device_code:d.payload.device_code,device_uuid:d.deviceId,decision_id:d.decisionId,command_type:d.commandType,action:d.action,source:d.source,status:d.status,payload:d.payload,requested_at:d.requestedAt,dispatch_enabled:$('Prepare Automation Input').first().json.dispatch_enabled}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        656
+      ],
+      "id": "b47fb3aa-2558-408a-91ae-a44a291e4d11",
+      "name": "Prepare Dispatch Payload"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3001/api/commands/recent?limit=200",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "62adf32a-bc89-4ef2-ab00-25449d2fbbff",
+      "name": "Get Recent Commands",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1008,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$('Prepare Automation Input').first().json;\nif(!Array.isArray($json.body)) throw new Error('Recent commands response must be an array');\nconst rows=$json.body;\n// deviceId is a UUID; current decisions use ESP32_A101. Query identity from the original telemetry's room dashboard next.\nreturn {json:{...d,recent_commands:rows}};"
+      },
+      "id": "0e72557e-ec94-4a48-8f46-901b647e52b8",
+      "name": "Evaluate Automation Guards",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://host.docker.internal:3001/api/dashboard/rooms/' + encodeURIComponent($json.room) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "04292d91-c92a-4be8-9ddc-8c4061ad796b",
+      "name": "Get Room Devices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1504,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$('Evaluate Automation Guards').first().json;\nconst dev=$json.body?.devices?.find(x=>x.deviceCode===d.device_id);\nif(!dev) throw new Error('Device not found in room dashboard: '+d.device_id);\nconst now=Date.now();const logs=[];const actions=[];\nconst records=d.recent_commands.filter(x=>x.deviceId===dev.id).sort((a,b)=>Date.parse(b.requestedAt)-Date.parse(a.requestedAt));\nfor(const [type,action] of [['FAN',d.fan_action],['LIGHT',d.light_action]]){\n if(action==='KEEP'){logs.push(type+':KEEP');continue;}\n const rows=records.filter(r=>r.commandType===type);\n const age=r=>(now-Date.parse(r.requestedAt))/1000;\n const latest=rows[0];\n if(rows.some(r=>r.source==='MANUAL'&&['PENDING','SENT','ACK'].includes(r.status)&&age(r)>=0&&age(r)<d.manual_hold_seconds)){logs.push(type+':MANUAL_HOLD');continue;}\n const pending=rows.find(r=>['PENDING','SENT'].includes(r.status));\n if(pending){logs.push(type+':'+(age(pending)>d.pending_timeout_seconds?'PENDING_TIMEOUT_REQUIRES_REVIEW':'COMMAND_IN_FLIGHT'));continue;}\n if(latest?.status==='ACK'&&latest.action===action){logs.push(type+':ALREADY_ACKNOWLEDGED');continue;}\n if(latest&&age(latest)>=0&&age(latest)<d.cooldown_seconds){logs.push(type+':COOLDOWN');continue;}\n actions.push({command_type:type,action});\n}\nreturn {json:{...d,device_uuid:dev.id,actions,guard_reasons:logs,has_actions:actions.length>0}};"
+      },
+      "id": "21d9d439-749b-47be-9e4c-f7810bb64df2",
+      "name": "Filter Required Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fffb37d0-9a9d-4a4c-9822-77e4e9e90e9e",
+              "leftValue": "={{ $json.has_actions }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4ae7ecbb-9241-4cd7-9562-911f51d61ec4",
+      "name": "Has Required Actions",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2000,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'SKIPPED',decision_id:$json.decision_id,device_id:$json.device_id,reasons:$json.guard_reasons}};"
+      },
+      "id": "f7669fb5-e0a1-4834-8f38-f6e2a94df9d3",
+      "name": "Skipped - Review Reasons",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9c71758e-2eb7-4cf6-af40-e07350b8b091",
+              "leftValue": "={{ $json.dispatch_enabled === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "62d7f6e5-a22f-44c5-8526-0c1e9c09422c",
+      "name": "Dispatch Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3008,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$json,dispatch_result:'NOT_SENT',setup_required:'Select WF04 in Run WF04 Dispatcher, then set dispatch_enabled=true. This command remains PENDING; dispatch this existing command_id, do not create another command.'}};"
+      },
+      "id": "5a3b2f58-4cc4-4916-a5f0-fa0bc957db3c",
+      "name": "Pending - Connect WF04",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3264,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## REQUIRED SETUP / HONEST LIMITS\n1. Default dispatch_enabled=false: creates PENDING commands only. To send: select Vinh's WF04 in Run WF04 Dispatcher, then set dispatch_enabled=true in Prepare Automation Input.\n2. WF04 must accept command_id, device_id=ESP32_A101, device_uuid, command_type, action; publish existing command; update SENT. WF05 must ACK that command_id. This file does not pretend dispatch success = device ACK.\n3. Unacknowledged PENDING/SENT blocks new commands; after 120 s it reports PENDING_TIMEOUT_REQUIRES_REVIEW. Review/recover the existing command, not another new command.\n4. MANUAL hold = 300 s per actuator; cooldown = 20 s. This is a temporary override, NOT a persistent AUTO/MANUAL dashboard setting.\n5. Guards use latest 200 commands (all devices). Not atomic: concurrent executions can race. Serialize demo executions; production needs backend lock/idempotency and per-device queries. ACK history is not a physical state sensor; device resets can invalidate it.\n6. No automatic retry of POSTs. Incidents and reliable state/mode endpoints remain team integration work.\nBackend remains unchanged.",
+        "height": 580,
+        "width": 680
+      },
+      "id": "3995aff8-80a0-4a8c-be2a-52a2b33e092d",
+      "name": "README - IMPORT AND LIMITS",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Automation Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Automation Input": {
+      "main": [
+        [
+          {
+            "node": "Get Recent Commands",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Device Commands": {
+      "main": [
+        [
+          {
+            "node": "Create Command in Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Command in Backend": {
+      "main": [
+        [
+          {
+            "node": "Prepare Dispatch Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Commands": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Automation Guards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Automation Guards": {
+      "main": [
+        [
+          {
+            "node": "Get Room Devices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Room Devices": {
+      "main": [
+        [
+          {
+            "node": "Filter Required Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Required Actions": {
+      "main": [
+        [
+          {
+            "node": "Has Required Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Required Actions": {
+      "main": [
+        [
+          {
+            "node": "Build Device Commands",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skipped - Review Reasons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Dispatch Payload": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Enabled": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Pending - Connect WF04",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e039067e-212e-4380-a723-36c07f1e0f16",
+  "meta": {
+    "instanceId": "74397114e206792390d2318630c9cb2cd8c3ad6e9328254d2194767fe90a0e8d"
+  },
+  "nodeGroups": [],
+  "id": "ruWXnIqNiq9sRXEl",
+  "tags": []
+}
