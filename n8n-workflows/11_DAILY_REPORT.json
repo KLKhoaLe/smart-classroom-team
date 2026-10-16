@@ -1,0 +1,70 @@
+{
+  "name": "11_DAILY_REPORT",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "days", "triggerAtHour": 23, "triggerAtMinute": 55 }] } },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "b1100000-0000-4000-8000-000000000001",
+      "name": "Run Daily at 23:55"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 160],
+      "id": "b1100000-0000-4000-8000-000000000002",
+      "name": "Run Manually"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3001/api/reports/daily?room=A101",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [256, 80],
+      "id": "b1100000-0000-4000-8000-000000000003",
+      "name": "Load Daily Aggregate"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const daily = $json;\nif (!daily.date || !daily.room) throw new Error('Daily report response is missing room or date');\nconst start = new Date(`${daily.date}T00:00:00+07:00`).toISOString();\nconst end = new Date(`${daily.date}T23:59:59.999+07:00`).toISOString();\nconst recommendation = daily.devicesWithIssues > 0\n  ? `Kiểm tra ${daily.devicesWithIssues}/${daily.totalDevices} thiết bị đang ngoại tuyến.`\n  : daily.totalIncidents > 0\n    ? `Theo dõi ${daily.openIncidents} sự cố đang mở và xác nhận các sự cố đã xử lý.`\n    : 'Không ghi nhận sự cố hoặc thiết bị ngoại tuyến trong ngày.';\nreturn { json: { report_type: 'DAILY', room: daily.room, period_start: start, period_end: end, summary: { date: daily.date, totalIncidents: daily.totalIncidents, openIncidents: daily.openIncidents, resolvedIncidents: daily.resolvedIncidents, incidentsBySeverity: daily.incidentsBySeverity, totalDevices: daily.totalDevices, devicesOnline: daily.devicesOnline, devicesWithIssues: daily.devicesWithIssues, telemetry: daily.telemetry }, recommendation } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [512, 80],
+      "id": "b1100000-0000-4000-8000-000000000004",
+      "name": "Prepare Daily Report"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/reports",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [768, 80],
+      "id": "b1100000-0000-4000-8000-000000000005",
+      "name": "Save Daily Report"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Daily at 23:55": { "main": [[{ "node": "Load Daily Aggregate", "type": "main", "index": 0 }]] },
+    "Run Manually": { "main": [[{ "node": "Load Daily Aggregate", "type": "main", "index": 0 }]] },
+    "Load Daily Aggregate": { "main": [[{ "node": "Prepare Daily Report", "type": "main", "index": 0 }]] },
+    "Prepare Daily Report": { "main": [[{ "node": "Save Daily Report", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "b1100000-0000-4000-8000-000000000102",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

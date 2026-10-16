@@ -224,6 +224,22 @@ incidents
 reports
 ```
 
+### Khởi động n8n
+
+n8n cũng chạy trong Docker Compose và lưu trạng thái trong volume `smart_classroom_n8n_data`:
+
+```bash
+docker compose up -d n8n
+```
+
+Mở `http://localhost:5678`, tạo tài khoản owner local, rồi import các file `10_INCIDENT_MANAGEMENT.json`, `11_DAILY_REPORT.json`, và `12_WEEKLY_AI_OPTIMIZATION.json` từ **Workflows → Import from File**. Chọn OpenAI credential cho node AI của WF12 trước khi publish. n8n đã được đặt timezone `Asia/Ho_Chi_Minh`; backend URL trong các workflow dùng `host.docker.internal` để gọi API chạy trên máy host.
+
+Để form sự cố và các nút resolve/mở lại chạy qua WF10, thêm dòng sau vào `backend/.env` rồi khởi động lại backend:
+
+```env
+N8N_INCIDENT_MANAGEMENT_WEBHOOK_URL=http://localhost:5678/webhook/incident-management
+```
+
 ---
 
 ## 8. Khởi động Backend

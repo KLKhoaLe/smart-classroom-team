@@ -1,0 +1,112 @@
+{
+  "name": "12_WEEKLY_AI_OPTIMIZATION",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "weeks", "triggerAtDay": [1], "triggerAtHour": 8, "triggerAtMinute": 0 }] } },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "c1200000-0000-4000-8000-000000000001",
+      "name": "Run Mondays at 08:00"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 160],
+      "id": "c1200000-0000-4000-8000-000000000002",
+      "name": "Run Manually"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3001/api/reports/weekly?room=A101",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [256, 80],
+      "id": "c1200000-0000-4000-8000-000000000003",
+      "name": "Load Weekly Summary"
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list", "cachedResultName": "GPT-4O-MINI" },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Bạn là chuyên gia vận hành lớp học thông minh. Dựa trên số liệu 7 ngày, đưa ra một khuyến nghị ngắn, cụ thể, ưu tiên an toàn và bảo trì. Không bịa dữ liệu, nêu rõ loại sự cố lặp lại hoặc thiết bị cần kiểm tra. Chỉ trả về văn bản khuyến nghị, không markdown."
+            },
+            {
+              "content": "=Phòng: {{ $json.room }}\nKhoảng thời gian: {{ $json.periodStart }} đến {{ $json.periodEnd }}\nTổng sự cố: {{ $json.totalIncidents }}\nSự cố theo loại: {{ JSON.stringify($json.incidentsByType) }}\nThiết bị cần kiểm tra: {{ $json.devicesWithIssues }}\nTóm tắt hệ thống: {{ $json.recommendation }}\n\nHãy tổng hợp thành khuyến nghị tối ưu hoạt động tuần tới."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [512, 80],
+      "id": "c1200000-0000-4000-8000-000000000004",
+      "name": "Generate Weekly Recommendation",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.output?.[0]?.content?.find(item => item.type === 'output_text')?.text ?? $json.text ?? $json.response;\nif (!text || !String(text).trim()) throw new Error('AI recommendation text not found');\nconst weekly = $('Load Weekly Summary').first().json;\nreturn { json: { report_type: 'WEEKLY_OPTIMIZATION', room: weekly.room ?? 'A101', period_start: weekly.periodStart, period_end: weekly.periodEnd, summary: { totalIncidents: weekly.totalIncidents, incidentsByType: weekly.incidentsByType, devicesWithIssues: weekly.devicesWithIssues, source: 'AI' }, recommendation: String(text).trim() } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [768, 0],
+      "id": "c1200000-0000-4000-8000-000000000005",
+      "name": "Prepare AI Report"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const weekly = $('Load Weekly Summary').first().json;\nreturn { json: { report_type: 'WEEKLY_OPTIMIZATION', room: weekly.room ?? 'A101', period_start: weekly.periodStart, period_end: weekly.periodEnd, summary: { totalIncidents: weekly.totalIncidents, incidentsByType: weekly.incidentsByType, devicesWithIssues: weekly.devicesWithIssues, source: 'SYSTEM_FALLBACK' }, recommendation: weekly.recommendation ?? 'Chưa có đủ dữ liệu để tạo khuyến nghị tuần.' } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [768, 176],
+      "id": "c1200000-0000-4000-8000-000000000006",
+      "name": "Use System Recommendation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/reports",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1024, 80],
+      "id": "c1200000-0000-4000-8000-000000000007",
+      "name": "Save Weekly Optimization Report"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Mondays at 08:00": { "main": [[{ "node": "Load Weekly Summary", "type": "main", "index": 0 }]] },
+    "Run Manually": { "main": [[{ "node": "Load Weekly Summary", "type": "main", "index": 0 }]] },
+    "Load Weekly Summary": { "main": [[{ "node": "Generate Weekly Recommendation", "type": "main", "index": 0 }]] },
+    "Generate Weekly Recommendation": {
+      "main": [
+        [{ "node": "Prepare AI Report", "type": "main", "index": 0 }],
+        [{ "node": "Use System Recommendation", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare AI Report": { "main": [[{ "node": "Save Weekly Optimization Report", "type": "main", "index": 0 }]] },
+    "Use System Recommendation": { "main": [[{ "node": "Save Weekly Optimization Report", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "c1200000-0000-4000-8000-000000000102",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}
