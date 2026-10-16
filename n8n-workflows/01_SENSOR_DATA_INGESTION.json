@@ -1,5 +1,5 @@
 {
-  "name": "01_SENSOR_DATA_INGESTION",
+  "name": "01_SENSOR_DATA_INGESTION_V2",
   "nodes": [
     {
       "parameters": {
@@ -9,30 +9,30 @@
       "type": "n8n-nodes-base.mqttTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        608,
+        704
       ],
-      "id": "d0acce9d-7495-409a-a22c-609b3628a068",
+      "id": "f2b38438-73a6-4cc3-994b-3821e47727de",
       "name": "MQTT Trigger",
       "credentials": {
         "mqtt": {
-          "id": "5nibLptclwxEwULA",
-          "name": "MQTT account"
+          "id": "e0M2X08H1NQiMWEo",
+          "name": "MQTT account 2"
         }
       }
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const data = JSON.parse($json.message);\n\nreturn {\n  json: {\n    device_id: data.device_id,\n    room: data.room,\n    temperature: data.temperature,\n    humidity: data.humidity,\n    occupancy: data.occupancy,\n    light_raw: data.light_raw,\n    topic: $json.topic\n  }\n};"
+        "jsCode": "const raw = $json.message;\nlet data = {}; let error = null;\ntry {\n data = typeof raw === 'string' ? JSON.parse(raw) : raw;\n if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Expected object');\n} catch(e) { data = {}; error = 'INVALID_JSON'; }\nif (!error) {\n if (typeof data.device_id !== 'string' || data.device_id !== 'ESP32_A101') error='INVALID_DEVICE_ID';\n else if (data.room !== 'A101') error='INVALID_ROOM';\n else if (typeof data.temperature !== 'number' || !Number.isFinite(data.temperature)) error='INVALID_TEMPERATURE_TYPE';\n else if (typeof data.humidity !== 'number' || !Number.isFinite(data.humidity)) error='INVALID_HUMIDITY_TYPE';\n else if (typeof data.occupancy !== 'boolean') error='INVALID_OCCUPANCY_TYPE';\n else if (!Number.isInteger(data.light_raw)) error='INVALID_LIGHT_TYPE';\n}\nreturn {json:{...data, topic:$json.topic ?? null, raw_message:typeof raw==='string'?raw:JSON.stringify(raw ?? null), parse_ok:!error, error_reason:error}};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        224,
-        0
+        864,
+        704
       ],
-      "id": "47b0fc2d-1d99-4f1e-a363-78b99a0d3f29",
+      "id": "53c0ce21-b6f6-4bfc-b2b5-d42bc1c64f14",
       "name": "Parse Sensor JSON"
     },
     {
@@ -63,10 +63,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        448,
-        0
+        1360,
+        704
       ],
-      "id": "64763857-7f25-48ba-97d0-b6f1a250ee66",
+      "id": "ee6ceb83-e8e7-4a52-ac3e-acb0a0268c5f",
       "name": "Validate Device ID"
     },
     {
@@ -105,10 +105,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        672,
-        -96
+        1632,
+        704
       ],
-      "id": "6c08fa5f-bc96-40b1-8d3f-702187f9ce84",
+      "id": "9406a89b-bf92-4d9c-8647-627cf5d29426",
       "name": "Validate Temperature"
     },
     {
@@ -147,10 +147,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        896,
-        -192
+        1856,
+        704
       ],
-      "id": "c25e11a4-a59d-4807-aa14-e51fb6326a98",
+      "id": "d6d8d1af-40c9-4e8d-acf6-6160bb1f15ed",
       "name": "Validate Humidity"
     },
     {
@@ -181,10 +181,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1120,
-        -208
+        2112,
+        704
       ],
-      "id": "ada66a18-f523-4095-9a8c-115dfaf2d4f0",
+      "id": "5bbd2adc-f813-4c30-8d24-4aa1e2b0fe77",
       "name": "Validate Occupancy"
     },
     {
@@ -223,10 +223,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1344,
-        -256
+        2352,
+        704
       ],
-      "id": "f3cb5b36-23d3-448d-bf50-5e488669609d",
+      "id": "acede5ac-6a4d-40a4-a471-3c1690337fc6",
       "name": "Validate Light"
     },
     {
@@ -247,10 +247,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1568,
-        -320
+        2608,
+        704
       ],
-      "id": "24abdaa3-18a6-4982-b236-acbce2d94492",
+      "id": "61f531da-62d2-49ac-8dfb-f17a0408c89f",
       "name": "Add Timestamp"
     },
     {
@@ -271,10 +271,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1792,
-        -256
+        2864,
+        704
       ],
-      "id": "7aa00222-0fc9-46c2-8650-93c142ebdf16",
+      "id": "bd55d7e8-9858-41ff-9277-e3bd5663e4e8",
       "name": "Normalize Sensor Data"
     },
     {
@@ -295,10 +295,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        2016,
-        -256
+        3104,
+        704
       ],
-      "id": "5ef423fc-a487-4a26-9dfc-43b60a81cae6",
+      "id": "e919c79c-da3a-4ced-ac00-1e2a58c2537d",
       "name": "Mark Valid Data"
     },
     {
@@ -325,10 +325,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        672,
-        96
+        1776,
+        928
       ],
-      "id": "e56fc873-0283-40f0-9a6a-ccc004fb8fe8",
+      "id": "3e994d21-8f42-497f-8fda-b5642f33de40",
       "name": "Invalid Device ID"
     },
     {
@@ -355,10 +355,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        896,
-        0
+        2080,
+        944
       ],
-      "id": "782f922d-eaaf-4759-ae20-f227eb777387",
+      "id": "cd10b3ca-015a-40c0-8c75-ed0b7041d7e2",
       "name": "Invalid Temperature"
     },
     {
@@ -385,10 +385,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1152,
-        -16
+        2336,
+        976
       ],
-      "id": "702aef5f-da0c-4606-8f6e-d38353d9ecbf",
+      "id": "c1ec9bca-ab58-4d2c-a3e9-05c21761fb97",
       "name": "Invalid Humidity"
     },
     {
@@ -415,10 +415,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1408,
-        -48
+        2576,
+        976
       ],
-      "id": "4ca3a12f-d218-4009-b141-a2ad1e114402",
+      "id": "08c30e99-32d2-4632-8663-a227876c1684",
       "name": "Invalid Occupancy"
     },
     {
@@ -445,10 +445,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1568,
-        -160
+        2816,
+        992
       ],
-      "id": "a59c1455-8198-4131-ac90-34caa1433068",
+      "id": "760d8b31-c1b8-4a6d-88e4-37fbef733524",
       "name": "Invalid Light"
     },
     {
@@ -469,10 +469,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1648,
-        160
+        2976,
+        1472
       ],
-      "id": "f1f1baa2-e8ac-4452-99a2-3232aab3ffc9",
+      "id": "a31b8471-d84e-463c-b116-f8c79d8ba862",
       "name": "Add Error Timestamp"
     },
     {
@@ -481,16 +481,18 @@
         "url": "http://host.docker.internal:3001/api/telemetry",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"device_id\": \"{{$json.device_id}}\",\n  \"room\": \"{{$json.room}}\",\n  \"temperature\": {{$json.temperature}},\n  \"humidity\": {{$json.humidity}},\n  \"occupancy\": {{$json.occupancy}},\n  \"light_raw\": {{$json.light_raw}},\n  \"light_percent\": {{$json.light_percent}},\n  \"timestamp\": \"{{$json.timestamp}}\"\n}",
-        "options": {}
+        "jsonBody": "={{ ({device_id:$json.device_id,room:$json.room,temperature:$json.temperature,humidity:$json.humidity,occupancy:$json.occupancy,light_raw:$json.light_raw,light_percent:$json.light_percent,timestamp:$json.timestamp}) }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2288,
-        -224
+        3360,
+        704
       ],
-      "id": "3b87bf3a-d96b-404e-a119-5eee85b5ba53",
+      "id": "64c03f5b-daa5-489d-8689-703912f58a5f",
       "name": "Save Telemetry to Backend"
     },
     {
@@ -499,26 +501,28 @@
         "url": "http://host.docker.internal:3001/api/ingestion-errors",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"device_id\": \"{{$json.device_id}}\",\n  \"room\": \"{{$json.room}}\",\n  \"temperature\": {{$json.temperature ?? null}},\n  \"humidity\": {{$json.humidity ?? null}},\n  \"occupancy\": {{$json.occupancy ?? null}},\n  \"light_raw\": {{$json.light_raw ?? null}},\n  \"error_reason\": \"{{$json.error_reason}}\",\n  \"timestamp\": \"{{$json.timestamp}}\"\n}",
-        "options": {}
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1872,
-        160
+        3664,
+        1024
       ],
-      "id": "a093fcd1-da1a-4f7d-984a-99b8d4b1803c",
+      "id": "2bf7cb29-b01a-45f7-9858-b22621dcc190",
       "name": "Save Error to Backend"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "HAy1tQQMW0QQrGr1",
+          "value": "Av1cLWtTBZh9x8k4",
           "mode": "list",
-          "cachedResultUrl": "/workflow/HAy1tQQMW0QQrGr1",
-          "cachedResultName": "02_AI_DECISION_ENGINE"
+          "cachedResultUrl": "/workflow/Av1cLWtTBZh9x8k4",
+          "cachedResultName": "02_AI_DECISION_ENGINE_V2"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -528,15 +532,18 @@
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
-        "options": {}
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
       },
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        2768,
-        -80
+        3856,
+        704
       ],
-      "id": "1c4bf3fe-4d15-4262-9c89-2b5ec09c1417",
+      "id": "9b61e872-5db0-4b04-a738-5d5cc580c02a",
       "name": "Run Decision Engine"
     },
     {
@@ -547,11 +554,74 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2512,
-        -224
+        3600,
+        704
       ],
-      "id": "591e1910-a993-4f32-bf15-08f5a69c6676",
+      "id": "4c039caa-2b42-4178-9a16-55169afc3412",
       "name": "Prepare Decision Payload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a073f577-2f8d-4741-ad71-4b8f86c9c6d1",
+              "leftValue": "={{ $json.parse_ok === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6f1f839e-e97b-4b10-a972-49592be5d8b3",
+      "name": "Payload Types Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$json;\nconst num=x=>typeof x==='number' && Number.isFinite(x)?x:null;\n// Current backend rejects wrong types. Preserve the raw packet in error_reason (max 6000 chars).\nreturn {json:{device_id:typeof d.device_id==='string'?d.device_id:null,room:typeof d.room==='string'?d.room:null,\n temperature:num(d.temperature),humidity:num(d.humidity),occupancy:typeof d.occupancy==='boolean'?d.occupancy:null,\n light_raw:Number.isInteger(d.light_raw)?d.light_raw:null,\n error_reason:String(d.error_reason ?? 'INVALID_SENSOR_DATA')+' | raw='+String(d.raw_message ?? '').slice(0,6000),timestamp:d.timestamp}};"
+      },
+      "id": "1290cae0-b12c-4af4-b286-4f6d17f0ba4e",
+      "name": "Prepare Safe Error Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3408,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Import WF03 → WF02 → WF01\n1. Select your MQTT credential in MQTT Trigger.\n2. Select 02_AI_DECISION_ENGINE_V2 in Run Decision Engine.\n3. Backend URLs default to http://host.docker.internal:3001 (n8n Docker, backend on host).\n4. Disable old WF01 before activating this one; do not run two MQTT ingestion flows.\n\nValidation covers malformed JSON, wrong types, room A101 and sensor ranges. Existing backend needs no schema change. Raw invalid payload is preserved as text inside error_reason (truncated to 6000 chars); a dedicated raw_payload API field is a future improvement.\n\nPOST requests are not automatically retried: current API has no idempotency key. Backend outage remains a failed execution, not a false success.\nlight_percent is inverted ADC percentage, not lux.",
+        "height": 580,
+        "width": 680
+      },
+      "id": "0cfed6c1-0bd0-4a72-b663-57ec20172168",
+      "name": "README - IMPORT AND LIMITS",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
     }
   ],
   "pinData": {},
@@ -571,7 +641,7 @@
       "main": [
         [
           {
-            "node": "Validate Device ID",
+            "node": "Payload Types Valid",
             "type": "main",
             "index": 0
           }
@@ -760,16 +830,11 @@
       "main": [
         [
           {
-            "node": "Save Error to Backend",
+            "node": "Prepare Safe Error Record",
             "type": "main",
             "index": 0
           }
         ]
-      ]
-    },
-    "Run Decision Engine": {
-      "main": [
-        []
       ]
     },
     "Save Telemetry to Backend": {
@@ -793,6 +858,35 @@
           }
         ]
       ]
+    },
+    "Payload Types Valid": {
+      "main": [
+        [
+          {
+            "node": "Validate Device ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Error Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Safe Error Record": {
+      "main": [
+        [
+          {
+            "node": "Save Error to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -800,12 +894,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "78e25fa1-25a1-4e0a-b3b4-f96bb226d1ea",
+  "versionId": "d48dce09-b10d-4c6d-9aef-64d2ba982d25",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "74397114e206792390d2318630c9cb2cd8c3ad6e9328254d2194767fe90a0e8d"
   },
   "nodeGroups": [],
-  "id": "3a4EZWc3xjoo3Yin",
+  "id": "DYci7z7AUsEhxGwM",
   "tags": []
 }
