@@ -26,6 +26,13 @@ type DailyReport = {
   totalDevices: number;
   devicesOnline: number;
   devicesWithIssues: number;
+  telemetry: {
+    sampleCount: number;
+    averageTemperature: number | null;
+    averageHumidity: number | null;
+    averageLightPercent: number | null;
+    occupiedSamples: number;
+  };
 };
 type WeeklyOptimization = {
   periodStart: string;
@@ -47,6 +54,7 @@ export default function Home() {
   const [reportsError, setReportsError] = useState('');
   const [busy, setBusy] = useState(false);
   const [reportBusy, setReportBusy] = useState(false);
+  const [statusBusyId, setStatusBusyId] = useState('');
 
   const load = useCallback(async () => {
     try { setData(await api<Dashboard>('/dashboard/rooms/A101')); setError(''); }
@@ -85,9 +93,10 @@ export default function Home() {
     setReportBusy(true);
     setIncidentError('');
     try {
-      await api('/incidents', {
+      await api('/incidents/workflow', {
         method: 'POST',
         body: JSON.stringify({
+          action: 'CREATE',
           room: 'A101',
           incident_type: form.get('incident_type'),
           severity: form.get('severity'),
@@ -101,6 +110,25 @@ export default function Home() {
       setIncidentError(e instanceof Error ? e.message : 'Gửi báo cáo thất bại');
     } finally {
       setReportBusy(false);
+    }
+  }
+
+  async function changeIncidentStatus(incident: Incident) {
+    setStatusBusyId(incident.id);
+    setIncidentError('');
+    try {
+      const isOpen = incident.status === 'OPEN';
+      await api('/incidents/workflow', {
+        method: 'POST',
+        body: JSON.stringify(isOpen
+          ? { action: 'RESOLVE', incident_id: incident.id }
+          : { action: 'UPDATE_STATUS', incident_id: incident.id, status: 'OPEN' }),
+      });
+      await Promise.all([loadIncidents(), loadReports()]);
+    } catch (e) {
+      setIncidentError(e instanceof Error ? e.message : 'Cập nhật trạng thái thất bại');
+    } finally {
+      setStatusBusyId('');
     }
   }
 
@@ -141,7 +169,7 @@ export default function Home() {
         {incidents.length ? <div className="incidentList">{incidents.map((incident) => <article className="incident" key={incident.id}>
           <div className="incidentTop"><div className="incidentTags"><span className={`severity severity-${incident.severity.toLowerCase()}`}>{incident.severity}</span><span className="incidentType">{incident.incidentType}</span></div><span className={`status status-${incident.status.toLowerCase()}`}>{incident.status === 'OPEN' ? 'Đang mở' : 'Đã xử lý'}</span></div>
           <p>{incident.message}</p>
-          <time dateTime={incident.openedAt}>{new Date(incident.openedAt).toLocaleString('vi-VN')}</time>
+          <div className="incidentFooter"><time dateTime={incident.openedAt}>{new Date(incident.openedAt).toLocaleString('vi-VN')}</time><button className="statusAction" type="button" disabled={statusBusyId === incident.id} onClick={() => changeIncidentStatus(incident)}>{statusBusyId === incident.id ? 'Đang cập nhật...' : incident.status === 'OPEN' ? 'Đánh dấu đã xử lý' : 'Mở lại'}</button></div>
         </article>)}</div> : <div className="emptyState"><span>—</span><p>Chưa có báo cáo sự cố</p><small>Các báo cáo mới sẽ xuất hiện tại đây.</small></div>}
       </section>
     </section>
@@ -159,6 +187,15 @@ function DailyReportPanel({ report, error }: { report: DailyReport | null; error
         <div><span>Đang mở</span><strong>{report.openIncidents}</strong></div>
         <div><span>Thiết bị bình thường</span><strong>{report.devicesOnline}/{report.totalDevices}</strong></div>
         <div><span>Thiết bị cần kiểm tra</span><strong>{report.devicesWithIssues}</strong></div>
+      </div>
+      <div className="telemetrySummary">
+        <div className="telemetryHeading"><span>Telemetry trong ngày</span><strong>{report.telemetry?.sampleCount ?? 0} mẫu</strong></div>
+        <div className="telemetryMetrics">
+          <div><span>Nhiệt độ TB</span><strong>{report.telemetry?.averageTemperature == null ? '--' : `${report.telemetry.averageTemperature.toFixed(1)} °C`}</strong></div>
+          <div><span>Độ ẩm TB</span><strong>{report.telemetry?.averageHumidity == null ? '--' : `${report.telemetry.averageHumidity.toFixed(1)} %`}</strong></div>
+          <div><span>Ánh sáng TB</span><strong>{report.telemetry?.averageLightPercent == null ? '--' : `${report.telemetry.averageLightPercent.toFixed(0)} %`}</strong></div>
+          <div><span>Mẫu có người</span><strong>{report.telemetry?.occupiedSamples ?? 0}</strong></div>
+        </div>
       </div>
       <div className="severitySummary"><span className="muted">Theo mức độ</span>{Object.entries(report.incidentsBySeverity ?? {}).length ? Object.entries(report.incidentsBySeverity ?? {}).map(([severity, count]) => <span className={`severity severity-${severity.toLowerCase()}`} key={severity}>{severity} · {count}</span>) : <span className="muted">Không có sự cố</span>}</div>
     </> : <p className="muted">Đang tải số liệu trong ngày...</p>}

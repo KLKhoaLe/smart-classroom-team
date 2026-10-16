@@ -18,5 +18,25 @@ services:
       timeout: 5s
       retries: 10
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: smart-classroom-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
+      TZ: Asia/Ho_Chi_Minh
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+    volumes:
+      - smart_classroom_n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/import:ro
+
 volumes:
   smart_classroom_pgdata:
+  smart_classroom_n8n_data:

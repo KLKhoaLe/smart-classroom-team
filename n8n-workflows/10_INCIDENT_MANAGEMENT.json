@@ -1,0 +1,191 @@
+{
+  "name": "10_INCIDENT_MANAGEMENT",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident-management",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Incident Management Webhook",
+      "webhookId": "a1000000-0000-4000-8000-000000000101"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst action = String(input.action ?? 'CREATE').toUpperCase();\nconst allowedSeverities = ['INFO', 'LOW', 'WARNING', 'MEDIUM', 'HIGH', 'CRITICAL'];\nif (!['CREATE', 'RESOLVE', 'UPDATE_STATUS'].includes(action)) throw new Error('Unsupported incident action');\n\nif (action === 'RESOLVE') {\n  if (!input.incident_id) throw new Error('incident_id is required to resolve an incident');\n  return { json: { action, incident_id: String(input.incident_id) } };\n}\n\nif (action === 'UPDATE_STATUS') {\n  if (!input.incident_id) throw new Error('incident_id is required to update status');\n  if (!['OPEN', 'RESOLVED'].includes(input.status)) throw new Error('status must be OPEN or RESOLVED');\n  if (input.severity && !allowedSeverities.includes(String(input.severity).toUpperCase())) throw new Error('Unsupported incident severity');\n  if (input.message !== undefined && String(input.message).trim().length < 3) throw new Error('message must contain at least 3 characters');\n  return { json: { action, incident_id: String(input.incident_id), status: input.status, severity: input.severity, message: input.message } };\n}\n\nconst room = String(input.room ?? '').trim();\nconst incident_type = String(input.incident_type ?? '').trim();\nconst severity = String(input.severity ?? '').toUpperCase();\nconst message = String(input.message ?? '').trim();\nif (!room || !incident_type || message.length < 3) throw new Error('room, incident_type and a message of at least 3 characters are required');\nif (!allowedSeverities.includes(severity)) throw new Error('Unsupported incident severity');\nreturn { json: { action: 'CREATE', room, device_id: input.device_id ?? undefined, telemetry_id: input.telemetry_id ?? undefined, incident_type, severity, message } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Normalize and Validate Incident"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "a1000000-0000-4000-8000-000000000011",
+              "leftValue": "={{ $json.action === 'RESOLVE' }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [480, 0],
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Is Resolve Action"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://host.docker.internal:3001/api/incidents/{{$json.incident_id}}/resolve",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [720, -160],
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Resolve Incident"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "a1000000-0000-4000-8000-000000000012",
+              "leftValue": "={{ $json.action === 'UPDATE_STATUS' }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [720, 96],
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Is Status Update"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://host.docker.internal:3001/api/incidents/{{$json.incident_id}}/status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: $json.status, severity: $json.severity, message: $json.message } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [960, -16],
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Update Incident Status"
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:3001/api/incidents?status=OPEN&room={{ encodeURIComponent($json.room) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [960, 192],
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Load Open Incidents in Room",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const payload = $('Normalize and Validate Incident').first().json;\nconst normalize = value => String(value ?? '').trim().toLowerCase().replace(/\\s+/g, ' ');\nconst candidates = $input.all().flatMap(item => Array.isArray(item.json) ? item.json : [item.json]);\nconst duplicate = candidates.find(item => item.id && item.status === 'OPEN' && normalize(item.incidentType) === normalize(payload.incident_type) && normalize(item.message) === normalize(payload.message));\nreturn [{ json: { ...payload, duplicate_id: duplicate?.id ?? null } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 192],
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Detect Duplicate Incident"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "a1000000-0000-4000-8000-000000000013",
+              "leftValue": "={{ !!$json.duplicate_id }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1440, 192],
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "Duplicate Found"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://host.docker.internal:3001/api/incidents/{{$json.duplicate_id}}/status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: 'OPEN', severity: $json.severity, message: $json.message } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1680, 96],
+      "id": "a1000000-0000-4000-8000-000000000010",
+      "name": "Refresh Existing Incident"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/incidents",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { room: $json.room, device_id: $json.device_id, telemetry_id: $json.telemetry_id, incident_type: $json.incident_type, severity: $json.severity, message: $json.message } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1680, 288],
+      "id": "a1000000-0000-4000-8000-000000000014",
+      "name": "Create Incident"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Incident Management Webhook": { "main": [[{ "node": "Normalize and Validate Incident", "type": "main", "index": 0 }]] },
+    "Normalize and Validate Incident": { "main": [[{ "node": "Is Resolve Action", "type": "main", "index": 0 }]] },
+    "Is Resolve Action": { "main": [[{ "node": "Resolve Incident", "type": "main", "index": 0 }], [{ "node": "Is Status Update", "type": "main", "index": 0 }]] },
+    "Is Status Update": { "main": [[{ "node": "Update Incident Status", "type": "main", "index": 0 }], [{ "node": "Load Open Incidents in Room", "type": "main", "index": 0 }]] },
+    "Load Open Incidents in Room": { "main": [[{ "node": "Detect Duplicate Incident", "type": "main", "index": 0 }]] },
+    "Detect Duplicate Incident": { "main": [[{ "node": "Duplicate Found", "type": "main", "index": 0 }]] },
+    "Duplicate Found": { "main": [[{ "node": "Refresh Existing Incident", "type": "main", "index": 0 }], [{ "node": "Create Incident", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "a1000000-0000-4000-8000-000000000102",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

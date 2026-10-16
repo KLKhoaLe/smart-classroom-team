@@ -29,6 +29,10 @@
 .incidentType{color:#cbd5e1}
 .incident p{margin:0;color:#e2e8f0;line-height:1.5;overflow-wrap:anywhere}
 .incident time{font-size:12px;color:#94a3b8}
+.incidentFooter{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.statusAction{padding:7px 9px;border:1px solid #365146;border-radius:5px;background:#11251d;color:#86efac;font-size:12px}
+.statusAction:hover{background:#173729}
+.statusAction:disabled{cursor:wait}
 .emptyState{display:grid;justify-items:center;text-align:center;padding:42px 16px;color:#94a3b8}
 .emptyState span{font-size:28px;color:#38bdf8}
 .emptyState p{margin:8px 0 4px;color:#e2e8f0}
@@ -42,6 +46,13 @@
 .dailyMetrics>div{display:grid;gap:8px;padding:13px;border:1px solid #263247;border-radius:5px;background:#0d1525}
 .dailyMetrics span,.weeklyStats{color:#94a3b8;font-size:12px}
 .dailyMetrics strong{font-size:24px;color:#eef2ff}
+.telemetrySummary{margin-top:16px;padding-top:14px;border-top:1px solid #263247}
+.telemetryHeading{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;color:#94a3b8;font-size:12px}
+.telemetryHeading strong{color:#7dd3fc}
+.telemetryMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.telemetryMetrics>div{display:grid;gap:7px;min-width:0;padding:10px;border:1px solid #263247;border-radius:5px;background:#0d1525}
+.telemetryMetrics span{color:#94a3b8;font-size:11px}
+.telemetryMetrics strong{color:#eef2ff;font-size:15px;overflow-wrap:anywhere}
 .severitySummary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px}
 .severity-low{background:#123022;color:#86efac}
 .severity-medium{background:#34250b;color:#fcd34d}
@@ -52,4 +63,4 @@
 .weeklyBreakdown strong{color:#eef2ff}
 @media(max-width:800px){.incidentWorkspace{grid-template-columns:1fr}.incidentList{max-height:none}}
 @media(max-width:800px){.reportsGrid{grid-template-columns:1fr}}
-@media(max-width:500px){.incidentWorkspace>.panel,.reportsGrid>.panel{padding:18px}.incidentTop{align-items:flex-start}.sectionHeading{align-items:flex-start}.dailyMetrics>div{padding:10px}}
+@media(max-width:500px){.incidentWorkspace>.panel,.reportsGrid>.panel{padding:18px}.incidentTop{align-items:flex-start}.sectionHeading{align-items:flex-start}.dailyMetrics>div{padding:10px}.telemetryMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
