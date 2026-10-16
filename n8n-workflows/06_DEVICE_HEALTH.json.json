@@ -1,0 +1,88 @@
+{
+  "name": "WF06_Heartbeat_Offline_Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "consume",
+        "topic": "smartroom/A101/heartbeat"
+      },
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "id": "wf06-mqtt-heartbeat",
+      "name": "MQTT Listen Heartbeat",
+      "credentials": {
+        "mqtt": {
+          "id": "mqtt_broker",
+          "name": "Local MQTT Broker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const rawMsg = inputData[0].json.message || inputData[0].json.payload;\n  const payload = typeof rawMsg === 'string' ? JSON.parse(rawMsg) : rawMsg;\n  return [{\n    json: {\n      device_id: payload.device_id || 'ESP32_A101',\n      room_code: payload.room_id || 'A101',\n      last_seen: new Date().toISOString()\n    }\n  }];\n} catch (e) {\n  return [{ json: { device_id: 'ESP32_A101', last_seen: new Date().toISOString() } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 200],
+      "id": "wf06-code-heartbeat",
+      "name": "Parse Heartbeat Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:3000/api/devices/heartbeat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"device_id\": \"{{ $json.device_id }}\",\n  \"last_seen\": \"{{ $json.last_seen }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 200],
+      "id": "wf06-http-update-lastseen",
+      "name": "POST /api/devices/heartbeat"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 420],
+      "id": "wf06-schedule-cron",
+      "name": "Check Offline Every 2 Mins"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:3000/api/devices/check-offline",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 420],
+      "id": "wf06-http-check-offline",
+      "name": "Trigger Backend Check Offline"
+    }
+  ],
+  "connections": {
+    "MQTT Listen Heartbeat": {
+      "main": [[{ "node": "Parse Heartbeat Payload", "type": "main", "index": 0 }]]
+    },
+    "Parse Heartbeat Payload": {
+      "main": [[{ "node": "POST /api/devices/heartbeat", "type": "main", "index": 0 }]]
+    },
+    "Check Offline Every 2 Mins": {
+      "main": [[{ "node": "Trigger Backend Check Offline", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

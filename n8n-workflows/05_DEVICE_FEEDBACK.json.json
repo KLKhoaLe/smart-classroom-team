@@ -1,0 +1,90 @@
+{
+  "name": "WF05_Device_Feedback_ACK",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "consume",
+        "topic": "smartroom/A101/ack"
+      },
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "id": "wf05-mqtt-trigger",
+      "name": "MQTT Listen ACK",
+      "credentials": {
+        "mqtt": {
+          "id": "mqtt_broker",
+          "name": "Local MQTT Broker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const rawMsg = inputData[0].json.message || inputData[0].json.payload;\n  const payload = typeof rawMsg === 'string' ? JSON.parse(rawMsg) : rawMsg;\n  \n  return [{\n    json: {\n      command_id: payload.command_id || null,\n      status: payload.status === 'SUCCESS' ? 'ACK' : 'FAILED',\n      ack_at: new Date().toISOString(),\n      message: payload.message || 'Executed by ESP32'\n    }\n  }];\n} catch (error) {\n  return [{ json: { command_id: null, status: 'FAILED', message: error.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "id": "wf05-code-parse",
+      "name": "Parse ACK Payload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-valid-cmd",
+              "leftValue": "={{ $json.command_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [640, 300],
+      "id": "wf05-if-valid",
+      "name": "Is Command ID Present?"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'http://backend:3000/api/commands/' + $json.command_id + '/ack' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"{{ $json.status }}\",\n  \"ack_at\": \"{{ $json.ack_at }}\",\n  \"message\": \"{{ $json.message }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 200],
+      "id": "wf05-http-patch-ack",
+      "name": "PATCH /api/commands/:id/ack"
+    }
+  ],
+  "connections": {
+    "MQTT Listen ACK": {
+      "main": [[{ "node": "Parse ACK Payload", "type": "main", "index": 0 }]]
+    },
+    "Parse ACK Payload": {
+      "main": [[{ "node": "Is Command ID Present?", "type": "main", "index": 0 }]]
+    },
+    "Is Command ID Present?": {
+      "main": [
+        [{ "node": "PATCH /api/commands/:id/ack", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
