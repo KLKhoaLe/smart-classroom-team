@@ -11,6 +11,7 @@ export class IncidentsService {
   async create(dto: CreateIncidentDto) {
     const room = await this.rooms.findOne({ where: { code: dto.room } }); if (!room) throw new NotFoundException('Room not found');
     const device = dto.device_id ? await this.devices.findOne({ where: { deviceCode: dto.device_id } }) : null;
+    if (dto.device_id && !device) throw new NotFoundException(`Unknown device ${dto.device_id}`);
     return this.repo.save(this.repo.create({ roomId: room.id, deviceId: device?.id ?? null, telemetryId: dto.telemetry_id ?? null, incidentType: dto.incident_type, severity: dto.severity, message: dto.message, status: 'OPEN' }));
   }
   list(status?: string) { return this.repo.find({ where: status ? { status } : {}, order: { openedAt: 'DESC' }, take: 100 }); }

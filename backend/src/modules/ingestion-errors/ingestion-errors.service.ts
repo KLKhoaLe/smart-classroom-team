@@ -16,8 +16,11 @@ export class IngestionErrorsService {
       lightRaw: dto.light_raw ?? null,
       errorReason: dto.error_reason,
       sourceTimestamp: dto.timestamp ? new Date(dto.timestamp) : null,
-      rawPayload: { ...dto } as Record<string, unknown>,
+      rawPayload: dto.raw_payload ?? { ...dto } as Record<string, unknown>,
     }));
   }
-  recent(limit = 20) { return this.repo.find({ order: { createdAt: 'DESC' }, take: Math.min(limit, 200) }); }
+  recent(limit = 20) {
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 20;
+    return this.repo.find({ order: { createdAt: 'DESC' }, take: safeLimit });
+  }
 }

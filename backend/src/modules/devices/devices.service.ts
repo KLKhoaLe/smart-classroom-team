@@ -13,4 +13,14 @@ export class DevicesService {
     await this.events.save(this.events.create({ deviceId: device.id, eventType: 'HEARTBEAT', payload }));
     return { ok: true, device_id: deviceCode, last_seen: device.lastSeen };
   }
+
+  list() {
+    return this.devices.find({ order: { deviceCode: 'ASC' } });
+  }
+
+  async get(deviceCode: string) {
+    const device = await this.devices.findOne({ where: { deviceCode } });
+    if (!device) throw new NotFoundException(`Unknown device ${deviceCode}`);
+    return device;
+  }
 }
