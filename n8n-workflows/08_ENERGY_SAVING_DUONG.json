@@ -1,0 +1,296 @@
+{
+  "name": "WF08_ENERGY_SAVING_DUONG",
+  "nodes": [
+    {
+      "name": "Manual Trigger",
+      "id": "50d690ac-3cd3-49d6-a53d-1ec658a37cd2",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Du lieu mau",
+      "id": "b658b39f-fd17-4762-9106-c9d916a14370",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{...{\"room\": \"A101\", \"device_id\": \"ESP32_A101\", \"temperature\": 32, \"humidity\": 50, \"occupancy\": true, \"light_raw\": 3000, \"light_percent\": 20, \"test_empty_seconds\": 0},timestamp:new Date().toISOString()}}];"
+      }
+    },
+    {
+      "name": "When Executed by Another Workflow",
+      "id": "b6ff6400-4370-406c-b0a1-c353dc0e18ad",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        -220
+      ],
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"room\": \"A101\",\n  \"device_id\": \"ESP32_A101\",\n  \"temperature\": 32,\n  \"humidity\": 50,\n  \"occupancy\": true,\n  \"light_raw\": 3000,\n  \"light_percent\": 20\n}"
+      }
+    },
+    {
+      "name": "Telemetry dau vao",
+      "id": "c06178ec-22e4-400a-9b7b-342a1bf7d3cb",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst items=$input.all();\nif(items.length!==1) throw new Error('Requires one telemetry item per execution');\nconst d=items[0].json;\nconst room=d.room??d.room_id;\nconst now=new Date();\nconst isManual=$('Manual Trigger').isExecuted;\nconst time=d.timestamp==null?now.getTime():Date.parse(d.timestamp);\nlet error='';\nif(typeof room!=='string'||!room.trim()||typeof d.device_id!=='string'||!d.device_id.trim()) error='Thiếu room hoặc device_id';\nelse if(typeof d.occupancy!=='boolean') error='occupancy phải là boolean true/false';\nelse if(!Number.isFinite(time)||time>now.getTime()+30000||now.getTime()-time>120000) error='Timestamp không hợp lệ, quá cũ hoặc trong tương lai';\nelse if(!Number.isFinite(d.temperature)||d.temperature< -40||d.temperature>80||!Number.isFinite(d.light_percent)||d.light_percent<0||d.light_percent>100) error='WF08 cần temperature dạng số và light_percent từ 0 đến 100';\nreturn [{json:{...d,room:typeof room==='string'?room.trim():room,valid:!error,error,\n evaluated_at:now.toISOString(),backend_base_url:'http://host.docker.internal:3001/api',\n test_mode:isManual,\n test_empty_seconds:isManual&&Number.isFinite(d.test_empty_seconds)?Math.max(0,Math.min(3600,d.test_empty_seconds)):0,\n test_hour:isManual&&Number.isInteger(d.test_hour)&&d.test_hour>=0&&d.test_hour<=23?d.test_hour:null}}];\n"
+      }
+    },
+    {
+      "name": "Du lieu hop le",
+      "id": "88fe224b-4377-4a10-8111-0c7c0434dabd",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e1699d52-867c-478f-a505-c15683f875a8",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Du lieu loi",
+      "id": "d92a9fc5-435f-481b-b00f-5f1749a602ab",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        260
+      ],
+      "parameters": {
+        "jsCode": "const d=$input.first().json;return [{json:{room:d.room,device_id:d.device_id,wf08_status:'INVALID',message:d.error,should_notify:false,should_dispatch:false,command_requests:[],incident_request:null,device_request:null}}];"
+      }
+    },
+    {
+      "name": "Doc Config",
+      "id": "76168372-5f15-47e7-a685-c3c3129259ed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/monitoring/config/' + encodeURIComponent($('Telemetry dau vao').first().json.room) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "name": "Doc trang thai",
+      "id": "a37d2966-745f-420a-bf75-4b5753cca93a",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/monitoring/energy-state/' + encodeURIComponent($('Telemetry dau vao').first().json.room) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "name": "Tinh ket qua",
+      "id": "9fe6ee2e-490c-4c3a-8767-d07263cdf5cb",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst d=$('Telemetry dau vao').first().json;\nconst c=$('Doc Config').first().json;\nconst old=$input.first().json;\nconst has=old.room_id===d.room;\nconst now=new Date(d.evaluated_at);\nlet emptySince=null,mode='OCCUPIED';\nlet fan=has?old.fan_target:'KEEP';\nlet light=has?old.light_target:'KEEP';\nif(d.occupancy){\n if(d.temperature>=c.fan_on_temperature) fan='ON';\n else if(d.temperature<=c.fan_off_temperature) fan='OFF';\n if(d.light_percent<=c.light_on_below_percent) light='ON';\n else if(d.light_percent>=c.light_off_above_percent) light='OFF';\n}else{\n emptySince=has && old.occupancy===false && old.empty_since ? old.empty_since : now.toISOString();\n // Manual demo only: simulate continuous empty time without waiting two minutes.\n if(d.test_mode && d.test_empty_seconds>0)\n  emptySince=new Date(now.getTime()-d.test_empty_seconds*1000).toISOString();\n const seconds=Math.max(0,(now.getTime()-Date.parse(emptySince))/1000);\n if(seconds>=c.empty_delay_seconds){mode='EMPTY';fan='OFF';light='OFF';}\n else mode='WAITING';\n}\nconst requests=[];\nif(mode!=='WAITING'){\n for(const [command_type,target,previous] of [['FAN',fan,old.fan_target],['LIGHT',light,old.light_target]]){\n  const enteringEmpty=mode==='EMPTY' && (!has||old.mode!=='EMPTY');\n  const reoccupied=d.occupancy && (!has||old.occupancy===false);\n  if(target!=='KEEP' && (!has||target!==previous||enteringEmpty||reoccupied))\n   requests.push({device_id:d.device_id,command_type,action:target,source:'AUTO',\n    payload:{source_workflow:'WF08_ENERGY',room:d.room,reason:mode==='EMPTY'?'ROOM_EMPTY':'OCCUPIED_COMFORT'}});\n }\n}\nconst elapsed=emptySince?Math.max(0,(now.getTime()-Date.parse(emptySince))/1000):0;\nreturn [{json:{\n state_to_save:{occupancy:d.occupancy,empty_since:emptySince,fan_target:fan,light_target:light,mode,observed_at:d.evaluated_at},\n result:{room:d.room,room_id:d.room,device_id:d.device_id,source:'WF08_ENERGY',timestamp:d.evaluated_at,\n  wf08_status:requests.length?'ACTION':mode==='WAITING'?'WAITING':'NO_CHANGE',mode,\n  should_dispatch:requests.length>0,command_requests:requests,\n  fan_target:fan,light_target:light,empty_seconds:Math.floor(elapsed),\n  remaining_seconds:mode==='WAITING'?Math.max(0,Math.ceil(c.empty_delay_seconds-elapsed)):0,\n  test_mode:d.test_mode,\n  message:mode==='EMPTY'?'Phòng trống đủ thời gian: đề nghị tắt quạt và đèn':\n   mode==='WAITING'?'Đang chờ xác nhận phòng trống đủ thời gian':'Điều chỉnh theo nhiệt độ và ánh sáng khi có người'}\n}}];\n"
+      }
+    },
+    {
+      "name": "Luu trang thai",
+      "id": "7987d052-38ce-4717-9e88-7c4762216f40",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/monitoring/energy-state/' + encodeURIComponent($('Telemetry dau vao').first().json.room) }}",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Tinh ket qua').first().json.state_to_save }}"
+      }
+    },
+    {
+      "name": "Dau ra",
+      "id": "798473e6-6d11-40c7-a021-b7bd1e776a38",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:$('Tinh ket qua').first().json.result}];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Du lieu mau",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du lieu mau": {
+      "main": [
+        [
+          {
+            "node": "Telemetry dau vao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Telemetry dau vao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telemetry dau vao": {
+      "main": [
+        [
+          {
+            "node": "Du lieu hop le",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du lieu hop le": {
+      "main": [
+        [
+          {
+            "node": "Doc Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Du lieu loi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc Config": {
+      "main": [
+        [
+          {
+            "node": "Doc trang thai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc trang thai": {
+      "main": [
+        [
+          {
+            "node": "Tinh ket qua",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tinh ket qua": {
+      "main": [
+        [
+          {
+            "node": "Luu trang thai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Luu trang thai": {
+      "main": [
+        [
+          {
+            "node": "Dau ra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

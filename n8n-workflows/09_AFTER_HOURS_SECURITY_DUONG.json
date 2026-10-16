@@ -1,0 +1,296 @@
+{
+  "name": "WF09_AFTER_HOURS_SECURITY_DUONG",
+  "nodes": [
+    {
+      "name": "Manual Trigger",
+      "id": "76191023-266f-48ff-9167-44af1b07416c",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Du lieu mau",
+      "id": "db72ebcc-fd71-4736-b56a-206885a22dea",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{...{\"room\": \"A101\", \"device_id\": \"ESP32_A101\", \"temperature\": 32, \"humidity\": 50, \"occupancy\": true, \"light_raw\": 3000, \"light_percent\": 20, \"test_hour\": 23},timestamp:new Date().toISOString()}}];"
+      }
+    },
+    {
+      "name": "When Executed by Another Workflow",
+      "id": "51d57094-16d5-4318-9fc9-2f78a5290d1a",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        -220
+      ],
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"room\": \"A101\",\n  \"device_id\": \"ESP32_A101\",\n  \"temperature\": 32,\n  \"humidity\": 50,\n  \"occupancy\": true,\n  \"light_raw\": 3000,\n  \"light_percent\": 20\n}"
+      }
+    },
+    {
+      "name": "Telemetry dau vao",
+      "id": "b46df6c6-1d50-4900-8b24-f8ed358423e7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst items=$input.all();\nif(items.length!==1) throw new Error('Requires one telemetry item per execution');\nconst d=items[0].json;\nconst room=d.room??d.room_id;\nconst now=new Date();\nconst isManual=$('Manual Trigger').isExecuted;\nconst time=d.timestamp==null?now.getTime():Date.parse(d.timestamp);\nlet error='';\nif(typeof room!=='string'||!room.trim()||typeof d.device_id!=='string'||!d.device_id.trim()) error='Thiếu room hoặc device_id';\nelse if(typeof d.occupancy!=='boolean') error='occupancy phải là boolean true/false';\nelse if(!Number.isFinite(time)||time>now.getTime()+30000||now.getTime()-time>120000) error='Timestamp không hợp lệ, quá cũ hoặc trong tương lai';\n\nreturn [{json:{...d,room:typeof room==='string'?room.trim():room,valid:!error,error,\n evaluated_at:now.toISOString(),backend_base_url:'http://host.docker.internal:3001/api',\n test_mode:isManual,\n test_empty_seconds:isManual&&Number.isFinite(d.test_empty_seconds)?Math.max(0,Math.min(3600,d.test_empty_seconds)):0,\n test_hour:isManual&&Number.isInteger(d.test_hour)&&d.test_hour>=0&&d.test_hour<=23?d.test_hour:null}}];\n"
+      }
+    },
+    {
+      "name": "Du lieu hop le",
+      "id": "9c25554a-b04e-4014-92b9-aad28e8fca77",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3042a436-1eec-4370-894a-d9429c27e2b9",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Du lieu loi",
+      "id": "0db1837e-f4e9-4707-a2ef-0a213b226bf9",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        260
+      ],
+      "parameters": {
+        "jsCode": "const d=$input.first().json;return [{json:{room:d.room,device_id:d.device_id,wf09_status:'INVALID',message:d.error,should_notify:false,should_dispatch:false,command_requests:[],incident_request:null,device_request:null}}];"
+      }
+    },
+    {
+      "name": "Doc Config",
+      "id": "f07eacad-12fc-4bcb-a651-e470684bd248",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/monitoring/config/' + encodeURIComponent($('Telemetry dau vao').first().json.room) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "name": "Doc trang thai",
+      "id": "7879a77a-ae72-419b-9634-e8897b547033",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/monitoring/security-state/' + encodeURIComponent($('Telemetry dau vao').first().json.room) }}",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "name": "Tinh ket qua",
+      "id": "b3a20887-6c50-4281-90be-363a30d6f3b7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst d=$('Telemetry dau vao').first().json;\nconst c=$('Doc Config').first().json;\nconst old=$input.first().json;\nconst parts=new Intl.DateTimeFormat('en-GB',{timeZone:c.timezone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(d.evaluated_at));\nlet hour=Number(parts.find(p=>p.type==='hour').value);\nlet minute=Number(parts.find(p=>p.type==='minute').value);\nif(d.test_mode && d.test_hour!==null){hour=d.test_hour;minute=0;}\nconst m=hour*60+minute;\nconst inHours=c.allowed_start_minute<c.allowed_end_minute\n ? m>=c.allowed_start_minute && m<c.allowed_end_minute\n : m>=c.allowed_start_minute || m<c.allowed_end_minute;\nconst active=!inHours && d.occupancy;\nconst wasActive=old.room_id===d.room && old.active===true;\nconst opened=active&&!wasActive, closed=!active&&wasActive;\nconst message=opened?`Phòng ${d.room}: phát hiện có người ngoài giờ (${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')})`:\n closed?`Phòng ${d.room}: điều kiện cảnh báo ngoài giờ đã kết thúc`:\n active?'Cảnh báo ngoài giờ vẫn đang tồn tại':'Không có điều kiện cảnh báo ngoài giờ';\nreturn [{json:{\n state_to_save:{active,last_alert_at:opened?d.evaluated_at:(old.last_alert_at??null),observed_at:d.evaluated_at},\n result:{room:d.room,room_id:d.room,device_id:d.device_id,source:'WF09_SECURITY',timestamp:d.evaluated_at,\n  wf09_status:opened?'ALERT':closed?'RECOVERED':'NO_CHANGE',\n  severity:active?'CRITICAL':'NORMAL',after_hours:!inHours,security_active:active,\n  local_time:`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,timezone:c.timezone,\n  should_notify:opened,test_mode:d.test_mode,message,\n  incident_request:opened?{type:'AFTER_HOURS_SECURITY',severity:'CRITICAL',room_id:d.room,source:'WF09_SECURITY',message}:null,\n  device_request:opened?{buzzer:'ON',reason:'AFTER_HOURS_SECURITY'}:null,\n  security_buzzer_release:closed,\n  incident_resolution_request:closed?{type:'AFTER_HOURS_SECURITY',room_id:d.room,source:'WF09_SECURITY',reason:'SECURITY_CONDITION_CLEARED'}:null}\n}}];\n"
+      }
+    },
+    {
+      "name": "Luu trang thai",
+      "id": "9224258c-129b-4e81-9210-32900f0e9596",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Telemetry dau vao').first().json.backend_base_url + '/monitoring/security-state/' + encodeURIComponent($('Telemetry dau vao').first().json.room) }}",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Tinh ket qua').first().json.state_to_save }}"
+      }
+    },
+    {
+      "name": "Dau ra",
+      "id": "03532c2a-00e1-4a1c-8803-66ddd039fb20",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:$('Tinh ket qua').first().json.result}];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Du lieu mau",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du lieu mau": {
+      "main": [
+        [
+          {
+            "node": "Telemetry dau vao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Telemetry dau vao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telemetry dau vao": {
+      "main": [
+        [
+          {
+            "node": "Du lieu hop le",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Du lieu hop le": {
+      "main": [
+        [
+          {
+            "node": "Doc Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Du lieu loi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc Config": {
+      "main": [
+        [
+          {
+            "node": "Doc trang thai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc trang thai": {
+      "main": [
+        [
+          {
+            "node": "Tinh ket qua",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tinh ket qua": {
+      "main": [
+        [
+          {
+            "node": "Luu trang thai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Luu trang thai": {
+      "main": [
+        [
+          {
+            "node": "Dau ra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
