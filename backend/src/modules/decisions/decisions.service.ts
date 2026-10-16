@@ -12,4 +12,9 @@ export class DecisionsService {
     if (!room) throw new NotFoundException(`Unknown room ${dto.room}`);
     return this.repo.save(this.repo.create({ roomId: room.id, sourceTelemetryId: dto.telemetry_id ?? null, decisionSource: dto.decision_source, fanAction: dto.fan_action, lightAction: dto.light_action, mode: dto.mode ?? null, reason: dto.reason ?? null, modelName: dto.model_name ?? null }));
   }
+
+  recent(limit = 20) {
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 20;
+    return this.repo.find({ order: { createdAt: 'DESC' }, take: safeLimit });
+  }
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Telemetry } from '../../entities/telemetry.entity';
@@ -19,6 +19,9 @@ export class TelemetryService {
     const room = await this.roomRepo.findOne({ where: { code: dto.room } });
     if (!device) throw new NotFoundException(`Unknown device ${dto.device_id}`);
     if (!room) throw new NotFoundException(`Unknown room ${dto.room}`);
+    if (device.roomId !== room.id) {
+      throw new BadRequestException(`Device ${dto.device_id} does not belong to room ${dto.room}`);
+    }
 
     device.status = 'ONLINE';
     device.lastSeen = new Date();
@@ -47,6 +50,7 @@ export class TelemetryService {
   async recent(roomCode = 'A101', limit = 20) {
     const room = await this.roomRepo.findOne({ where: { code: roomCode } });
     if (!room) throw new NotFoundException(`Unknown room ${roomCode}`);
-    return this.telemetryRepo.find({ where: { roomId: room.id }, order: { receivedAt: 'DESC' }, take: Math.min(limit, 200) });
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 20;
+    return this.telemetryRepo.find({ where: { roomId: room.id }, order: { receivedAt: 'DESC' }, take: safeLimit });
   }
 }

@@ -1,0 +1,101 @@
+{
+  "name": "WF04_Device_Command_Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "device-command",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "id": "wf04-webhook",
+      "name": "Webhook Command Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "command_id",
+              "value": "={{ $json.body.command_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "device_id",
+              "value": "={{ $json.body.device_id || 'ESP32_A101' }}",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "mqtt_topic",
+              "value": "smartroom/A101/command",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "mqtt_payload",
+              "value": "={{ JSON.stringify({ command_id: $json.body.command_id, action: $json.body.action, command_type: $json.body.command_type, requested_at: new Date().toISOString() }) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [420, 300],
+      "id": "wf04-set-payload",
+      "name": "Build MQTT Payload"
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "topic": "={{ $json.mqtt_topic }}",
+        "message": "={{ $json.mqtt_payload }}"
+      },
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "id": "wf04-mqtt-publish",
+      "name": "Publish to MQTT Broker",
+      "credentials": {
+        "mqtt": {
+          "id": "mqtt_broker",
+          "name": "Local MQTT Broker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'http://backend:3000/api/commands/' + $('Build MQTT Payload').item.json.command_id + '/status' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"status\": \"SENT\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 300],
+      "id": "wf04-http-update-sent",
+      "name": "Update Status SENT (NestJS)"
+    }
+  ],
+  "connections": {
+    "Webhook Command Trigger": {
+      "main": [[{ "node": "Build MQTT Payload", "type": "main", "index": 0 }]]
+    },
+    "Build MQTT Payload": {
+      "main": [[{ "node": "Publish to MQTT Broker", "type": "main", "index": 0 }]]
+    },
+    "Publish to MQTT Broker": {
+      "main": [[{ "node": "Update Status SENT (NestJS)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

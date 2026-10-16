@@ -224,6 +224,34 @@ incidents
 reports
 ```
 
+### Quản lý schema bằng migration
+
+`db/init.sql` được dùng để bootstrap PostgreSQL trong lần khởi tạo volume đầu tiên.
+Schema chính thức của backend nằm trong TypeORM migration tại
+`backend/src/database/migrations`.
+
+Sau khi khởi động PostgreSQL, chạy migration từ thư mục `backend`:
+
+```powershell
+Copy-Item .env.example .env
+npm install
+npm run migration:run
+```
+
+Xem trạng thái migration:
+
+```bash
+npx typeorm migration:show -d dist/database/data-source.js
+```
+
+Hoàn tác migration cuối cùng (chỉ dùng khi phát triển):
+
+```bash
+npm run migration:revert
+```
+
+Khi thêm thay đổi schema, tạo một migration mới thay vì sửa migration đã chạy.
+
 ---
 
 ## 8. Khởi động Backend
