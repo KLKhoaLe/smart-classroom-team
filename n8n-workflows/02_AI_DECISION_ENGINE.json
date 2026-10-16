@@ -1,5 +1,5 @@
 {
-  "name": "02_AI_DECISION_ENGINE",
+  "name": "02_AI_DECISION_ENGINE_V2",
   "nodes": [
     {
       "parameters": {
@@ -8,10 +8,10 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        0
+        512,
+        656
       ],
-      "id": "92fd86c9-c71b-4de9-a4ff-70e94039198d",
+      "id": "05865518-77d3-4c5e-894e-3e4e6bd814b2",
       "name": "When Executed by Another Workflow"
     },
     {
@@ -22,10 +22,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        224,
-        0
+        752,
+        656
       ],
-      "id": "52f4a635-49e1-4c8f-89da-13f9f6f07a78",
+      "id": "a7818d8b-236e-4718-be4f-5ea6695cf400",
       "name": "Prepare Decision Input"
     },
     {
@@ -56,10 +56,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        448,
-        0
+        1008,
+        656
       ],
-      "id": "646ecd13-2299-4e8a-bbe6-08091ab74bf7",
+      "id": "fd9aea0b-0aee-444c-be38-c3f7979d43ad",
       "name": "Check Occupancy"
     },
     {
@@ -72,10 +72,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        656,
-        272
+        1264,
+        656
       ],
-      "id": "fc0ed3ef-16f3-4be2-a494-4adc04f8afb1",
+      "id": "058d3551-089e-422e-b1d5-db5b495f17d7",
       "name": "Set Empty Room Decision"
     },
     {
@@ -105,10 +105,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        672,
-        -96
+        1264,
+        896
       ],
-      "id": "061c20c3-a265-4457-b56e-29483800b552",
+      "id": "0f4a4021-8de3-44b2-abc6-c14aca364159",
       "name": "Check Temperature"
     },
     {
@@ -121,10 +121,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        896,
-        -192
+        1504,
+        656
       ],
-      "id": "ee3a8bbc-00c1-493e-9a8b-8c63602c04d3",
+      "id": "f5c86900-8ac5-44e6-8b87-735291c52a63",
       "name": "Set Fan ON"
     },
     {
@@ -137,10 +137,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        896,
-        0
+        1504,
+        912
       ],
-      "id": "172cd5cd-583f-4c98-ba59-9cadff38fd04",
+      "id": "02cecdb4-148e-4c30-8a58-509fc7d8d094",
       "name": "Set Fan OFF"
     },
     {
@@ -170,10 +170,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1216,
-        -112
+        1744,
+        816
       ],
-      "id": "2ba82357-b7e9-4921-a330-e0b9af313ef8",
+      "id": "e29e9b19-d934-4ecf-9778-e5c472c8ffca",
       "name": "Check Light Level"
     },
     {
@@ -186,10 +186,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1440,
-        -208
+        2000,
+        656
       ],
-      "id": "0f06ab7c-cc4e-4052-ac08-661385f65b7f",
+      "id": "b4982e6f-a913-4501-88a0-fd55457cf7f2",
       "name": "Set Light ON"
     },
     {
@@ -202,10 +202,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1440,
-        -16
+        2000,
+        912
       ],
-      "id": "643d2983-02ad-4694-a1e6-481c3c578e44",
+      "id": "3e88e9b3-fbd9-463f-892f-c84957c03549",
       "name": "Set Light OFF"
     },
     {
@@ -238,10 +238,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1776,
-        -128
+        2256,
+        656
       ],
-      "id": "fbebf81c-ec74-4d1a-9567-0a6e78caeefb",
+      "id": "22f55353-2dfc-4142-8e71-84af6bb1c769",
       "name": "Finalize Occupied Decision"
     },
     {
@@ -250,16 +250,18 @@
         "url": "http://host.docker.internal:3001/api/decisions",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"telemetry_id\": \"{{$json.telemetry_id}}\",\n  \"room\": \"{{$json.room}}\",\n  \"decision_source\": \"{{$json.decision_source.trim()}}\",\n  \"fan_action\": \"{{$json.fan_action}}\",\n  \"light_action\": \"{{$json.light_action}}\",\n  \"mode\": \"{{$json.mode}}\",\n  \"reason\": \"{{$json.reason}}\",\n  \"model_name\": \"{{$json.model_name}}\"\n}",
-        "options": {}
+        "jsonBody": "={{ ({telemetry_id:String($json.telemetry_id),room:$json.room,decision_source:$json.decision_source,fan_action:$json.fan_action,light_action:$json.light_action,mode:$json.mode,reason:$json.reason,model_name:$json.model_name ?? null}) }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2544,
-        96
+        4096,
+        448
       ],
-      "id": "eeba4aa6-3027-421f-b17f-cde6def5e12d",
+      "id": "0ec8f931-b2d2-40ca-aef3-d422c17e4c02",
       "name": "Save Decision to Backend"
     },
     {
@@ -274,10 +276,10 @@
           "values": [
             {
               "role": "system",
-              "content": "You are the AI decision engine for a Smart Classroom system.\n\nAnalyze classroom sensor data and the existing rule-based decision.\n\nSafety rules must always be respected:\n- If occupancy is false, fan_action must be OFF and light_action must be OFF.\n- If occupancy is true and temperature is above 30°C, fan_action must be ON.\n- If occupancy is true and temperature is 30°C or below, fan_action must be OFF.\n- If occupancy is true and light_percent is below 30, light_action must be ON.\n- If occupancy is true and light_percent is 30 or above, light_action must be OFF.\n\nReturn ONLY valid JSON with exactly these fields:\n\n{\n  \"fan_action\": \"ON or OFF\",\n  \"light_action\": \"ON or OFF\",\n  \"mode\": \"SMART_COMFORT or ENERGY_SAVING\",\n  \"reason\": \"short explanation\"\n}\n\nDo not return markdown.\nDo not return code fences.\nDo not add any fields outside this JSON."
+              "content": "You review a Smart Classroom rule decision. Return ONLY JSON with fan_action (ON/OFF), light_action (ON/OFF), mode (SMART_COMFORT/ENERGY_SAVING), reason (nonempty string, max 1500 characters). Keep fan_action, light_action and mode EXACTLY as the supplied deterministic rule. Your useful role is to analyze the recent history: mention a temperature/humidity trend only when supported, explain the action and optionally suggest a practical adjustment for human review. Do not invent consumption measurements, savings, faults, or history. Write the reason in Vietnamese. Recommendations are advisory; they do not change device commands."
             },
             {
-              "content": "=Room: {{ $json.room }}\nTemperature: {{ $json.temperature }} °C\nHumidity: {{ $json.humidity }} %\nOccupancy: {{ $json.occupancy }}\nLight percent: {{ $json.light_percent }} %\n\nCurrent rule decision:\nFan: {{ $json.fan_action }}\nLight: {{ $json.light_action }}\nMode: {{ $json.mode }}\nReason: {{ $json.reason }}\n\nAnalyze this classroom state and return the required JSON decision."
+              "content": "={{ JSON.stringify($json) }}"
             }
           ]
         },
@@ -287,10 +289,10 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
       "position": [
-        1936,
-        48
+        3264,
+        656
       ],
-      "id": "65e7743f-1cc1-4ed7-bd55-b109f23dd323",
+      "id": "296f7716-7ca6-42fd-ba9b-50bbc6e8125b",
       "name": "Message a model",
       "credentials": {
         "openAiApi": {
@@ -303,38 +305,40 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const text =\n  $json.output?.[0]?.content?.find(\n    item => item.type === 'output_text'\n  )?.text;\n\nif (!text) {\n  throw new Error('AI response text not found');\n}\n\nconst cleanedText = text\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst ai = JSON.parse(cleanedText);\n\n// Lấy lại dữ liệu gốc trước khi gọi AI\nconst original = $('Prepare Decision Input').item.json;\n\n// Kiểm tra output AI có hợp lệ không\nconst validActions = ['ON', 'OFF'];\n\nif (!validActions.includes(ai.fan_action)) {\n  throw new Error('Invalid AI fan_action');\n}\n\nif (!validActions.includes(ai.light_action)) {\n  throw new Error('Invalid AI light_action');\n}\n\nif (!ai.mode || !ai.reason) {\n  throw new Error('AI response missing mode or reason');\n}\n\nreturn {\n  json: {\n    ...original,\n\n    fan_action: ai.fan_action,\n    light_action: ai.light_action,\n    mode: ai.mode,\n    reason: ai.reason,\n\n    decision_source: 'AI',\n    model_name: 'GPT-6-LUNA'\n  }\n};"
+        "jsCode": "const rule=$('Capture Rule Decision').first().json;\nconst text=$json.output?.flatMap(o=>o.content ?? []).find(x=>x.type==='output_text')?.text;\nif (typeof text!=='string') throw new Error('AI_TEXT_MISSING');\nconst ai=JSON.parse(text.replace(/^\\s*```(?:json)?\\s*/i,'').replace(/\\s*```\\s*$/,'').trim());\nif (!ai || typeof ai!=='object' || Array.isArray(ai)) throw new Error('AI_OBJECT_REQUIRED');\nif (!['ON','OFF'].includes(ai.fan_action)||!['ON','OFF'].includes(ai.light_action)) throw new Error('AI_ACTION_INVALID');\nif (!['SMART_COMFORT','ENERGY_SAVING'].includes(ai.mode)) throw new Error('AI_MODE_INVALID');\nif(typeof ai.reason!=='string'||!ai.reason.trim()||ai.reason.length>1500) throw new Error('AI_REASON_INVALID');\nif(ai.fan_action!==rule.fan_action||ai.light_action!==rule.light_action||ai.mode!==rule.mode) throw new Error('AI_RULE_VIOLATION');\nreturn {json:{...rule,fan_action:ai.fan_action,light_action:ai.light_action,mode:ai.mode,reason:ai.reason.trim(),decision_source:'AI',model_name:'GPT-6-LUNA'}};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2320,
-        -16
+        3600,
+        448
       ],
-      "id": "42c2612e-1b70-4b65-9da8-dbac2ec8b8de",
-      "name": "Parse AI Response"
+      "id": "ed8033a2-dad2-4446-ba76-7dbf37a37f7f",
+      "name": "Parse AI Response",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "let ruleDecision = null;\n\n// Trường hợp phòng có người\ntry {\n  ruleDecision = $('Finalize Occupied Decision').item.json;\n} catch (e) {\n  // Node này có thể không chạy nếu phòng trống\n}\n\n// Trường hợp phòng trống\nif (!ruleDecision) {\n  try {\n    ruleDecision = $('Set Empty Room Decision').item.json;\n  } catch (e) {\n    // Node này có thể không chạy nếu phòng có người\n  }\n}\n\nif (!ruleDecision) {\n  throw new Error('Cannot find rule-based decision for fallback');\n}\n\nreturn {\n  json: {\n    ...ruleDecision,\n\n    decision_source: 'RULE',\n    model_name: 'RULE_FALLBACK',\n\n    reason:\n      ruleDecision.reason +\n      '; AI unavailable, using rule-based fallback'\n  }\n};"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const rule=$('Capture Rule Decision').first().json;\nreturn {json:{...rule,decision_source:'RULE',model_name:'RULE_FALLBACK',reason:rule.reason+'; AI unavailable or invalid; deterministic rule fallback.'}};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2304,
-        144
+        3856,
+        448
       ],
-      "id": "e33765e1-ad08-48e0-a35c-deb85b3fe910",
+      "id": "4a98f508-142a-4134-8b61-b98cb3f09333",
       "name": "Use Rule Fallback"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "3qIYPnQtadwkVUpM",
+          "value": "ruWXnIqNiq9sRXEl",
           "mode": "list",
-          "cachedResultUrl": "/workflow/3qIYPnQtadwkVUpM",
-          "cachedResultName": "03_MASTER_AUTOMATION"
+          "cachedResultUrl": "/workflow/ruWXnIqNiq9sRXEl",
+          "cachedResultName": "03_MASTER_AUTOMATION_V2"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -344,15 +348,18 @@
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
-        "options": {}
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
       },
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        2992,
-        96
+        4608,
+        448
       ],
-      "id": "72eec988-6bc1-49df-977e-254fc561781e",
+      "id": "6466b7da-838a-40bd-a007-e72acc39adf8",
       "name": "Run Master Automation"
     },
     {
@@ -363,11 +370,77 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2768,
-        96
+        4352,
+        448
       ],
-      "id": "c1287a84-c1ba-4d6f-910c-a663b5fb87c2",
+      "id": "a23d9dfb-6709-404c-989b-9b58e9b1483a",
       "name": "Prepare Master Automation Payload"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$json}};"
+      },
+      "id": "009acfeb-2788-4212-8119-d8de57cace03",
+      "name": "Capture Rule Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://host.docker.internal:3001/api/telemetry/recent?room=' + encodeURIComponent($json.room) + '&limit=10' }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "3feb4936-d8f6-45da-b219-f85141d0b342",
+      "name": "Get Recent Telemetry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2752,
+        656
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const rule=$('Capture Rule Decision').first().json;\nconst rows=Array.isArray($json.body)?$json.body:[];\nconst history=rows.map(r=>({temperature:Number(r.temperature),humidity:Number(r.humidity),light_percent:Number(r.lightPercent),occupancy:r.occupancy,timestamp:r.receivedAt})).filter(r=>Number.isFinite(r.temperature));\nreturn {json:{...rule,recent_history:history,history_available:history.length>0}};"
+      },
+      "id": "116b79cb-b726-46b3-8613-ad7299a2ed28",
+      "name": "Build AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Setup\nSelect an OpenAI credential and an available model in Message a model. If you change model, change model_name in Parse AI Response too.\nSelect 03_MASTER_AUTOMATION_V2 in Run Master Automation.\nCall this workflow with ONE telemetry per execution (parent node mode = each).\n\n## Behavior\nRule commands remain deterministic. AI now reviews up to 10 recent records and writes a Vietnamese explanation/advisory recommendation. AI does NOT autonomously override thresholds. Explain this honestly in the presentation.\nBoth API errors and invalid AI JSON/actions/mode/reason go to RULE fallback. Invalid actions cannot bypass rules.\nHistory failure permits rule + AI with no history; database write failures still stop execution.\nNo hysteresis yet: requires reliable per-actuator state. WF03 adds cooldown instead.",
+        "height": 580,
+        "width": 680
+      },
+      "id": "5b38b461-dce9-4c75-8194-bdf33c3894ee",
+      "name": "README - IMPORT AND LIMITS",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
     }
   ],
   "pinData": {},
@@ -496,7 +569,7 @@
       "main": [
         [
           {
-            "node": "Message a model",
+            "node": "Capture Rule Decision",
             "type": "main",
             "index": 0
           }
@@ -507,7 +580,7 @@
       "main": [
         [
           {
-            "node": "Message a model",
+            "node": "Capture Rule Decision",
             "type": "main",
             "index": 0
           }
@@ -537,6 +610,13 @@
         [
           {
             "node": "Save Decision to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Use Rule Fallback",
             "type": "main",
             "index": 0
           }
@@ -575,6 +655,39 @@
           }
         ]
       ]
+    },
+    "Capture Rule Decision": {
+      "main": [
+        [
+          {
+            "node": "Get Recent Telemetry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Telemetry": {
+      "main": [
+        [
+          {
+            "node": "Build AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Context": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -582,12 +695,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ceb1e6fe-cb1c-4993-9834-185cf8183701",
+  "versionId": "a0728ecf-c96f-4a72-8307-df09c3a5eaf2",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "74397114e206792390d2318630c9cb2cd8c3ad6e9328254d2194767fe90a0e8d"
   },
   "nodeGroups": [],
-  "id": "HAy1tQQMW0QQrGr1",
+  "id": "Av1cLWtTBZh9x8k4",
   "tags": []
 }
